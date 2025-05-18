@@ -35,8 +35,13 @@
 #include <Arduino.h>
 #include "HX711.h"
 
-const int DOUT = 9; //hx711, labeled as D10 on the silkscreen for xiao
-const int CLK = 8; //hx711, labeled as D9 on the silkscreen for xiao
+//GPIOs (note these don't match up with the silkscreen digital callouts on the XIAO board, see schematic)
+const int IN1MotorPin = 7; //change to 44 if motor runs in reverse
+const int IN2MotorPin = 44; //change to 7 if motor runs in reverse
+const int buttonUPpin = 5; //labeled as D4 on the silkscreen for xiao
+const int buttonDOWNpin = 6; //labeled as D5 on the slikscreen for xiao
+const int HX_DOUT = 9; //hx711, labeled as D10 on the silkscreen for xiao
+const int HX_CLK = 8; //hx711, labeled as D9 on the silkscreen for xiao
 
 HX711 scale;
 
@@ -49,7 +54,14 @@ void setup() {
   Serial.println("After readings begin, place known weight on scale");
   Serial.println("Press + or a to increase calibration factor");
   Serial.println("Press - or z to decrease calibration factor");
-  scale.begin(DOUT,CLK);
+  
+  // disable motor driver
+  pinMode(IN1MotorPin, OUTPUT);
+  pinMode(IN2MotorPin, OUTPUT);
+  analogWrite(IN1MotorPin, 0);
+  analogWrite(IN2MotorPin, 0);
+
+  scale.begin(HX_DOUT,HX_CLK);
   scale.set_scale();
   scale.tare();	//Reset the scale to 0
 
