@@ -8,7 +8,8 @@
 #define WAKEUP_GPIO              GPIO_NUM_5     // Only RTC IO are allowed
 
 // //GPIOs for R&D Supermini, don't use.
-// const int MotorPin = 13;
+// const int IN1MotorPin = 13; //change to 12 if motor runs in reverse
+// const int IN2MotorPin = 12; //change to 13 if motor runs in reverse
 // const int buttonUPpin = 5;
 // const int buttonDOWNpin = 4; 
 // const int HX_DOUT = 10; //hx711
@@ -17,7 +18,8 @@
 
 
 //GPIOs (note these don't match up with the silkscreen digital callouts on the XIAO board, see schematic)
-const int MotorPin = 7; //change to 44 if motor runs in reverse
+const int IN1MotorPin = 7; //change to 44 if motor runs in reverse
+const int IN2MotorPin = 44; //change to 7 if motor runs in reverse
 const int buttonUPpin = 5; //labeled as D4 on the silkscreen for xiao
 const int buttonDOWNpin = 6; //labeled as D5 on the slikscreen for xiao
 const int HX_DOUT = 9; //hx711, labeled as D10 on the silkscreen for xiao
@@ -127,9 +129,11 @@ void print_wakeup_reason() {
 
 void setup() {
   //motor configs
-  pinMode(MotorPin, OUTPUT);
+  pinMode(IN1MotorPin, OUTPUT);
   analogWriteFrequency(MotorPWMFrequency); //20000 is out of hearing range, 1000 seems to be fine with the motor controller in the housing.
-  
+  pinMode(IN2MotorPin, OUTPUT);
+  analogWrite(IN2MotorPin, 0);
+
   //start serial for ButtonDebug
   Serial.begin(115200);
   Serial.println("Serial Start");
@@ -168,9 +172,9 @@ void setup() {
   scale.tare();
   //spin motor to indicate completion of startup
   analogWriteFrequency(1000);
-  setMotorVoltage(MotorPin, BusVoltage, 0.5);
+  setMotorVoltage(IN1MotorPin, BusVoltage, 0.5);
   delay(500);
-  setMotorVoltage(MotorPin, BusVoltage, 0);
+  setMotorVoltage(IN1MotorPin, BusVoltage, 0);
   analogWriteFrequency(MotorPWMFrequency);
   //reset status, button lib has startup bugs - will always trigger a release and click mode per button when process is called the first time. Also cover button pressed reset from scale method
   buttonUP.process();
@@ -223,13 +227,13 @@ void loop() {
       MotorVoltage = constrain(MotorVoltage + MotorVoltageStep, 0, BusVoltage);
       Serial.print("MotorVoltage: ");
       Serial.println(MotorVoltage, 2);
-      setMotorVoltage(MotorPin, BusVoltage, MotorVoltage);
+      setMotorVoltage(IN1MotorPin, BusVoltage, MotorVoltage);
     }
   }
   else if(buttonUP.buttonstatus == 2){
     //do click things
     //Serial.println("clickUP");
-    setMotorVoltage(MotorPin, BusVoltage, MotorVoltage = MotorStartVoltage);
+    setMotorVoltage(IN1MotorPin, BusVoltage, MotorVoltage = MotorStartVoltage);
     //reset buttonUP state
     buttonUP.buttonstatus = 0;
   }
@@ -241,13 +245,13 @@ void loop() {
       MotorVoltage = constrain(MotorVoltage - MotorVoltageStep, 0, BusVoltage);
       Serial.print("MotorVoltage: ");
       Serial.println(MotorVoltage, 2);
-      setMotorVoltage(MotorPin, BusVoltage, MotorVoltage);
+      setMotorVoltage(IN1MotorPin, BusVoltage, MotorVoltage);
     }
   }
   else if(buttonDOWN.buttonstatus == 2){
     //do click things
     //Serial.print("clickDOWN");
-    setMotorVoltage(MotorPin, BusVoltage, MotorVoltage = 0);
+    setMotorVoltage(IN1MotorPin, BusVoltage, MotorVoltage = 0);
     //reset buttonUP state
     buttonDOWN.buttonstatus = 0;
   }
@@ -258,7 +262,7 @@ void loop() {
   }
   else if(MotorVoltage > 0 && scale_reading < 1.0 && MotorRunTime > 0){
     if((millis() - MotorRunTime > MotorRunTimeout) && (millis()-LastButtonPress > ButtonRunTimeout)){
-      setMotorVoltage(MotorPin, BusVoltage, MotorVoltage = 0);
+      setMotorVoltage(IN1MotorPin, BusVoltage, MotorVoltage = 0);
       Serial.println("No Load Motor Timeout");
     }
   }
