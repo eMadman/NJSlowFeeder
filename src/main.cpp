@@ -8,35 +8,37 @@
 #define WAKEUP_GPIO              GPIO_NUM_5     // Only RTC IO are allowed
 
 // //GPIOs for R&D Supermini, don't use.
-// const int IN1MotorPin = 13; //change to 12 if motor runs in reverse
-// const int IN2MotorPin = 12; //change to 13 if motor runs in reverse
-// const int buttonUPpin = 5;
-// const int buttonDOWNpin = 4; 
-// const int HX_DOUT = 10; //hx711
-// const int HX_CLK = 11; //hx711
-// #define HX711CLK GPIO_NUM_11 //define HX_CLK this way as well for deepsleep pullup (hx711 in sleep)
+const int IN1MotorPin = 13; //change to 12 if motor runs in reverse
+const int IN2MotorPin = 12; //change to 13 if motor runs in reverse
+const int buttonUPpin = 5;
+const int buttonDOWNpin = 4; 
+const int HX_DOUT = 10; //hx711
+const int HX_CLK = 11; //hx711
+#define HX711CLK GPIO_NUM_11 //define HX_CLK this way as well for deepsleep pullup (hx711 in sleep)
 
 
 //GPIOs (note these don't match up with the silkscreen digital callouts on the XIAO board, see schematic)
-const int IN1MotorPin = 7; //change to 44 if motor runs in reverse
-const int IN2MotorPin = 44; //change to 7 if motor runs in reverse
-const int buttonUPpin = 5; //labeled as D4 on the silkscreen for xiao
-const int buttonDOWNpin = 6; //labeled as D5 on the slikscreen for xiao
-const int HX_DOUT = 9; //hx711, labeled as D10 on the silkscreen for xiao
-const int HX_CLK = 8; //hx711, labeled as D9 on the silkscreen for xiao
-#define HX711CLK GPIO_NUM_8 //define HX_CLK this way as well for deepsleep pullup (hx711 in sleep)
+// const int IN1MotorPin = 7; //change to 44 if motor runs in reverse
+// const int IN2MotorPin = 44; //change to 7 if motor runs in reverse
+// const int buttonUPpin = 5; //labeled as D4 on the silkscreen for xiao
+// const int buttonDOWNpin = 6; //labeled as D5 on the slikscreen for xiao
+// const int HX_DOUT = 9; //hx711, labeled as D10 on the silkscreen for xiao
+// const int HX_CLK = 8; //hx711, labeled as D9 on the silkscreen for xiao
+// #define HX711CLK GPIO_NUM_8 //define HX_CLK this way as well for deepsleep pullup (hx711 in sleep)
 
 //motor variables
 
 float MotorVoltage = 0;  //Current value of Motor Drive Voltage
   //user config
 int MotorPWMFrequency = 20000; //motor PWM frequency, 20000 you can't hear, 1000 has more granular range.
-float MotorStartVoltage = 2.6; //voltage the system will default to when clicking or holding up. Use 1.5V for 1000Hz analog freq, 2.7 for 20000Hz.
+float MotorStartVoltage = 2.5; //voltage the system will default to when clicking or holding up. Use 1.5V for 1000Hz analog freq, 2.7 for 20000Hz.
 float BusVoltage = 3.3; //PWM Logic Level
 float MotorVoltageStep = 0.1; //voltage the motor will step up per MotorUpdateTime interval when a button is held  Use 0.2 for 1000Hz, 0.1 for 20000Hz
 int MotorUpdateTime = 500; //milliseconds, controls how frequently the motor voltage gets updated
 
 int setMotorVoltage(int, float, float);
+void TareScales(void);
+void MakeNoise(int, int);
 
 //Loop/Sleep Variables
 u_long PrevUpdateTime = 0; 
@@ -44,8 +46,12 @@ u_long SleepTimeoutTracker = 0;
   //user config
 int SleepTimeoutTime = 60000; //milliseconds, controls how long before device deep sleep when there's no weight, button presses, etc.
 int SleepErrorTimeoutTime = 300000;  //sleep regardless of weight after 5 minutes of no button pushes. Used to cover for any weird scale behavior.
-float WeightTimeoutMinimumBound = 2.0; //minimum weight to stay awake
+float WeightTimeoutMinimumBound = 2.6; //minimum weight to stay awake
 float WeightTimeoutMaxiumumBound = 30.0; //maximum bean weight expected in slowfeeder, keeps awake.
+
+//AutoDose
+// float DoseStartingWeight = 0; //will be set by program later
+// float DoseTarget = 20; //grams
 
 //MotorAutoOff
 u_long MotorRunTime = 0;
@@ -166,16 +172,17 @@ void setup() {
     Serial.println("Button pressed, delay startup tare");
   } 
   //delay for 2 second to allow for time to set the slowfeeder on the counter.
-  Serial.println("Start Delay startup");
-  delay(2000);
-  Serial.println("End Delay Startup");
-  scale.tare();
-  //spin motor to indicate completion of startup
-  analogWriteFrequency(1000);
-  setMotorVoltage(IN1MotorPin, BusVoltage, 0.5);
-  delay(500);
-  setMotorVoltage(IN1MotorPin, BusVoltage, 0);
-  analogWriteFrequency(MotorPWMFrequency);
+  // Serial.println("Start Delay startup");
+  // delay(2000);
+  // Serial.println("End Delay Startup");
+  // scale.tare();
+  // //spin motor to indicate completion of startup
+  // analogWriteFrequency(1000);
+  // setMotorVoltage(IN1MotorPin, BusVoltage, 0.5);
+  // delay(500);
+  // setMotorVoltage(IN1MotorPin, BusVoltage, 0);
+  // analogWriteFrequency(MotorPWMFrequency);
+  TareScales();
   //reset status, button lib has startup bugs - will always trigger a release and click mode per button when process is called the first time. Also cover button pressed reset from scale method
   buttonUP.process();
   buttonDOWN.process();
@@ -194,6 +201,9 @@ void loop() {
   int updatetimebool = ((millis() - PrevUpdateTime) > MotorUpdateTime);
   if(((millis() - SleepTimeoutTracker) > SleepTimeoutTime) || ((millis() - LastButtonPress) > SleepErrorTimeoutTime)){
       //put HX711 to sleep
+      MakeNoise(1750, 400);
+      MakeNoise(1500, 400);
+      MakeNoise(1000, 400);
       rtc_gpio_pulldown_dis(HX711CLK);
       rtc_gpio_pullup_en(HX711CLK);
       //begin going to sleep :)
@@ -234,6 +244,7 @@ void loop() {
     //do click things
     //Serial.println("clickUP");
     setMotorVoltage(IN1MotorPin, BusVoltage, MotorVoltage = MotorStartVoltage);
+    // DoseStartingWeight = scale.get_units(3);
     //reset buttonUP state
     buttonUP.buttonstatus = 0;
   }
@@ -241,11 +252,14 @@ void loop() {
   if(buttonDOWN.buttonstatus == 1){
     //do hold things
     //Serial.println("holdDOWN");
-    if(updatetimebool){
+    if(updatetimebool && MotorVoltage > 0){
       MotorVoltage = constrain(MotorVoltage - MotorVoltageStep, 0, BusVoltage);
       Serial.print("MotorVoltage: ");
       Serial.println(MotorVoltage, 2);
       setMotorVoltage(IN1MotorPin, BusVoltage, MotorVoltage);
+    }
+    else if(MotorVoltage == 0){
+      TareScales();
     }
   }
   else if(buttonDOWN.buttonstatus == 2){
@@ -269,10 +283,15 @@ void loop() {
   else{
     MotorRunTime = 0;
   }
-
-  if(updatetimebool){
-    PrevUpdateTime = millis();
-  }
+  // if(DoseStartingWeight > 0){
+  //   if(scale_reading < 0.75){
+  //     setMotorVoltage(IN1MotorPin, BusVoltage, MotorVoltage = 0);
+  //     DoseStartingWeight = 0;
+  //   }
+  // }
+  // if(updatetimebool){
+  //   PrevUpdateTime = millis();
+  // }
   delay(10);
 }
 
@@ -283,4 +302,24 @@ int setMotorVoltage(int driverPin, float BusVoltage, float MotorVoltage) {
     analogWrite(driverPin, setpoint);
     return 0;
   }
+}
+
+void TareScales(void){
+  Serial.println("Delay tare");
+  MakeNoise(1000, 500);
+  delay(2000);
+  Serial.println("End Delay tare");
+  scale.tare(10);
+  //spin motor to indicate completion of tare
+  MakeNoise(1000, 500);
+  MakeNoise(1500, 500);
+}
+
+void MakeNoise(int Frequency, int duration) {
+  Serial.println("Making Noise");
+  analogWriteFrequency(Frequency);
+  setMotorVoltage(IN1MotorPin, BusVoltage, 0.3);
+  delay(duration);
+  setMotorVoltage(IN1MotorPin, BusVoltage, 0);
+  analogWriteFrequency(MotorPWMFrequency);
 }
