@@ -27,6 +27,7 @@ const int HX_CLK = 8; //hx711, labeled as D9 on the silkscreen for xiao
 #define HX711CLK GPIO_NUM_8 //define HX_CLK this way as well for deepsleep pullup (hx711 in sleep)
 
 //motor variables
+
 float MotorVoltage = 0;  //Current value of Motor Drive Voltage
   //user config
 int MotorPWMFrequency = 20000; //motor PWM frequency, 20000 you can't hear, 1000 has more granular range.
@@ -54,16 +55,12 @@ float WeightTimeoutMaxiumumBound = 30.0; //maximum bean weight expected in slowf
 
 //MotorAutoOff
 u_long MotorRunTime = 0;
-int MotorRunTimeout = 60000; //milliseconds to run motor
-float LastWeightReading = 0;
-u_long LastWeightChangeTime = 0;
-const float WeightStabilityThreshold = 2;  // grams, allow small drift
-const u_long WeightUnchangedTimeout = 5000;  // 5 seconds
+int MotorRunTimeout = 10000; //milliseconds to run motor without beans
+float MotorTimeoutWeightMinimum = 5.0; //minimum weight before motor auto-off routine begins evaluating
 
 //LastButtonPress
 u_long LastButtonPress = 0;
 int ButtonRunTimeout = 5000; //milliseconds to ignore motor shutoff conditions due to button press
-
 
 //HX711 Scale
 HX711 scale;
@@ -92,12 +89,12 @@ void onRelease(Button& b){
 	Serial.println(b.pin);
 	if(b.buttonstatus == 0){
     Serial.print("Click: ");
-    Serial.println(b.pin);
+   	Serial.println(b.pin);
     b.buttonstatus = 2;
   }
   else if(b.buttonstatus == 1){
     Serial.print("HoldRelease: ");
-    Serial.println(b.pin);
+   	Serial.println(b.pin);
     b.buttonstatus = 0;
   }
   
@@ -134,6 +131,9 @@ void print_wakeup_reason() {
   }
 }
 
+
+
+
 void setup() {
   //motor configs
   pinMode(IN1MotorPin, OUTPUT);
@@ -151,6 +151,7 @@ void setup() {
   scale.begin(HX_DOUT, HX_CLK);
   scale.set_scale(calibration_factor);
   scale.tare(); //assume no beans present in slow feeder when turned on. Alternatively, can experiement with zero factor below.
+  
 
   // Assign callback functions
   //buttonUP.pressHandler(onPress);
@@ -195,6 +196,7 @@ void setup() {
   PrevUpdateTime = millis();
   SleepTimeoutTracker = PrevUpdateTime;
 }
+
 
 void loop() {
   int updatetimebool = ((millis() - PrevUpdateTime) > MotorUpdateTime);
@@ -269,52 +271,19 @@ void loop() {
     buttonDOWN.buttonstatus = 0;
   }
   
-  if (MotorVoltage > 0) {
-    if (MotorRunTime == 0) {
-      MotorRunTime = millis();
-      LastWeightReading = scale_reading;
-      LastWeightChangeTime = millis();
-    }
-    // Check for weight stability
-    if (abs(scale_reading - LastWeightReading) > WeightStabilityThreshold) {
-      // weight changed → reset timer
-      LastWeightReading = scale_reading;
-      LastWeightChangeTime = millis();
-    } else if (millis() - LastWeightChangeTime > WeightUnchangedTimeout) {
-      // weight hasn't changed in 5s → stop motor
+  //Motor auto-off feature
+  if(MotorVoltage > 0 && scale_reading < MotorTimeoutWeightMinimum && MotorRunTime == 0){
+    MotorRunTime = millis();
+  }
+  else if(MotorVoltage > 0 && scale_reading < 1.0 && MotorRunTime > 0){
+    if((millis() - MotorRunTime > MotorRunTimeout) && (millis()-LastButtonPress > ButtonRunTimeout)){
       setMotorVoltage(IN1MotorPin, BusVoltage, MotorVoltage = 0);
-      Serial.println("Motor auto-stopped: weight unchanged for 5s");
-      MotorRunTime = 0;
+      Serial.println("No Load Motor Timeout");
     }
-
-    // Existing 30s timeout logic
-    else if (millis() - MotorRunTime > MotorRunTimeout) {
-      setMotorVoltage(IN1MotorPin, BusVoltage, MotorVoltage = 0);
-      char buffer[64];
-      sprintf(buffer, "Motor auto-off after %.1f seconds", MotorRunTimeout / 1000.0);
-      Serial.println(buffer);
-      MotorRunTime = 0;
-    }
-  } else {
+  }
+  else{
     MotorRunTime = 0;
   }
-  // // Motor auto-off after user defined seconds
-  // if (MotorVoltage > 0) {
-
-  //   if (MotorRunTime == 0) {
-  //     MotorRunTime = millis();  // Start tracking
-  //   } 
-  //   else if (millis() - MotorRunTime > MotorRunTimeout) {  // 30 sec timeout
-  //     setMotorVoltage(IN1MotorPin, BusVoltage, MotorVoltage = 0);
-  //     char buffer[64];
-  //     sprintf(buffer, "Motor auto-off after %.1f seconds", MotorRunTimeout / 1000.0);
-  //     Serial.println(buffer);
-  //     MotorRunTime = 0;  // Reset timer
-  //   }
-  // } 
-  // else {
-  //   MotorRunTime = 0;
-  // }
   // if(DoseStartingWeight > 0){
   //   if(scale_reading < 0.75){
   //     setMotorVoltage(IN1MotorPin, BusVoltage, MotorVoltage = 0);
