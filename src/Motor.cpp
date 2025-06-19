@@ -4,10 +4,6 @@ Motor::Motor(int in1Pin, int in2Pin)
     : in1Pin(in1Pin), in2Pin(in2Pin) {}
 
 void Motor::setup() {
-	makeNoise(1000, 400);
-	makeNoise(1550, 400);
-	makeNoise(1750, 400);  
-
 	pinMode(in1Pin, OUTPUT);
     pinMode(in2Pin, OUTPUT);
     analogWriteFrequency(motorPWMFrequency);

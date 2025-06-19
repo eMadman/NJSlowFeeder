@@ -5,15 +5,19 @@
 #include "HX711.h"
 #include <array>
 
+using namespace std;
+
 class LoadCell {
 public:
-	LoadCell(int doutPin, int clkPin, float calibrationFactor, float alpha = 0.3, float thresholdMultiplier = 0.5);
+	LoadCell(int doutPin, int clkPin, float calibrationFactor, float alpha = 0.3);
 
 	void setup();
 	void update();               
 	void tare();
+	float getScaleWeight();
+	void startMotorTimer();
 	bool isFeedStopped();        
-	float getWeight();
+	bool shouldStopMotor();
 
 private:
 	HX711 scale;
@@ -29,31 +33,31 @@ private:
 	float currRate = 0;
 	float smoothedRate = 0;
 	float alpha;
-	float feedRateStdDev = 0;
-	float dynamicThreshold = 0.01;
-	float thresholdMultiplier;
-
-	// // Variance tracking (Welford)
-	// float mean = 0, M2 = 0;
-	// int count = 0;
 
 	// Timing
-	unsigned long lastRateUpdate = 0;
-	unsigned long statsStart = 0;
-	// const unsigned long sampleInterval = 200;
+	unsigned long lastRateUpdateTime = 0;
 	const unsigned long sampleInterval = 500;
-	// const unsigned long statsWindow = 5000;
+	const unsigned long minMotorRunTime = 10000; 
+	const unsigned long maxMotorRunTime = 50000;
+	unsigned long motorStartTime = 0;
 
 	// Feed stop detection
 	unsigned long stoppedSince = 0;
-	const unsigned long stopHoldTime = 5000;
+	// No hold after stop criteria met
+	const unsigned long stopHoldTime = 0;
 
+	// Stopping thresholds
+	const float weightChangeThreshold = 3.0;
+	const float feedRateThreshold = 1.0;
+
+	// Params used to stop
+	float minWeight;
+	float maxWeight;
+	bool weightFlag = false;
+	bool rateFlag = false;
 	static const int windowSize = 10;
-	std::array<float, windowSize> feedRateWindow;
-	std::array<float, windowSize> weightWindow;
-
-	// unsigned long statsResetInterval = 5000; // 5 sec
-	// unsigned long lastStatsReset = 0;
+	int weightInd = 0;
+	array<float, windowSize> weightWindow;
 };
 
 #endif

@@ -146,6 +146,11 @@ void setup() {
         Serial.println("Button pressed, delay startup tare");
     } 
 
+    motor.makeNoise(1000, 150);
+    motor.makeNoise(1300, 150);
+    motor.makeNoise(1600, 150);
+    motor.makeNoise(2000, 200); 
+
     //reset status, button lib has startup bugs - will always trigger a release and click mode per button when process is called the first time. 
     // Also cover button pressed reset from scale method
     buttonUP.process();
@@ -164,9 +169,10 @@ void loop() {
     // int toUpdate = ((millis() - PrevUpdateTime) > MotorUpdateTime);
     if(((millis() - SleepTimeoutTracker) > SleepTimeoutTime) || ((millis() - LastButtonPress) > SleepErrorTimeoutTime)){
         //put HX711 to sleep
-        motor.makeNoise(1750, 400);
-        motor.makeNoise(1550, 400);
-        motor.makeNoise(1000, 400);
+        motor.makeNoise(1800, 150);
+        motor.makeNoise(1400, 150);
+        motor.makeNoise(1000, 150);
+        motor.makeNoise(600, 300);
         rtc_gpio_pulldown_dis(HX711CLK);
         rtc_gpio_pullup_en(HX711CLK);
         //begin going to sleep :)
@@ -178,12 +184,6 @@ void loop() {
         esp_deep_sleep_start();
         Serial.println("If you see this, no you didn't");
     }
-    // if(toUpdate){
-    //   //read scale every motor update interval
-    //   scale_reading = scale.get_units();
-    //   Serial.print("Scale Reading: ");
-    //   Serial.println(scale_reading, 1);
-    // }
 
     //check button states
     buttonUP.process();
@@ -194,7 +194,6 @@ void loop() {
     // if(buttonUP.buttonstatus != 0 || buttonDOWN.buttonstatus != 0 || (scale_reading > WeightTimeoutMinimumBound && scale_reading < WeightTimeoutMaxiumumBound)){ SleepTimeoutTracker = millis();} //delay sleep
 
     //button status evaluations
-    Serial.println(motor.getVoltage(), 2);
     switch (buttonUP.buttonstatus) {
         case 1:  // Hold
             if (motor.getVoltage() == 0) {
@@ -208,6 +207,7 @@ void loop() {
         
 
         case 2:  // Click
+            loadCell.tare();
             motor.setVoltage(IN1MotorPin, motor.getMinVoltage());
             buttonUP.buttonstatus = 0;
             break;
@@ -233,6 +233,7 @@ void loop() {
         case 2:  // Click
             motor.setVoltage(IN1MotorPin, 0);
             buttonDOWN.buttonstatus = 0;
+            loadCell.tare();
             break;
 
         default:
@@ -241,35 +242,11 @@ void loop() {
     }
 
     if (motor.getVoltage() > 0) {
-        // if (motor.getMotorStartTime() == 0) {
-        //     motor.setMotorStartTime(millis());
-        // }
-
         loadCell.update();
-
-        // if (loadCell.isFeedStopped()) {
-        //     motor.setVoltage(IN1MotorPin, 0);
-        //     Serial.println("Motor stopped: feed rate ≈ 0");
-        // }
-
-        // if (millis() - motor.getMotorStartTime() > motor.getMotorMaxTime()) {
-        //     motor.setVoltage(IN1MotorPin, 0);
-        //     Serial.println("Stopped: Max run time exceeded");
-        // }
+        if (loadCell.shouldStopMotor()) {
+            motor.setVoltage(IN1MotorPin, 0);
+            loadCell.tare();
+        }
     }   
-    // else {
-    //     motor.setMotorStartTime(0);
-    // }
     delay(10);
 }
-
-// void TareScales(void){
-//   Serial.println("Delay tare");
-//   MakeNoise(1000, 500);
-//   delay(2000);
-//   Serial.println("End Delay tare");
-//   scale.tare(10);
-//   //spin motor to indicate completion of tare
-//   MakeNoise(1000, 500);
-//   MakeNoise(1500, 500);
-// }

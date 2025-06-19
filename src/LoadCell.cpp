@@ -1,82 +1,118 @@
 #include "LoadCell.h"
 
-LoadCell::LoadCell(int doutPin, int clkPin, float cf, float a, float tm)
-	: DOUT(doutPin), CLK(clkPin), calibrationFactor(cf), alpha(a), thresholdMultiplier(tm) {}
+LoadCell::LoadCell(int doutPin, int clkPin, float cf, float a)
+	: DOUT(doutPin), CLK(clkPin), calibrationFactor(cf), alpha(a) {}
 
 
 void LoadCell::tare() {
+	// Serial.println("Taring load cell");
+	weightInd = 0;
+	fill(weightWindow.begin(), weightWindow.end(), 0.0f);
+	motorStartTime = 0;
+	lastRateUpdateTime = 0;
+	stoppedSince = 0;
+	previousWeight = 0;
+	scaleReading = 0;
+	currRate = 0;
+	smoothedRate = 0;
+	minWeight = 0; maxWeight = 0;
+	weightFlag = false, rateFlag = 0;
 	scale.tare(10);
+}
+
+float LoadCell::getScaleWeight() {
+	return scale.get_units();
 }
 
 void LoadCell::setup() {
 	scale.begin(DOUT, CLK);
 	scale.set_scale(calibrationFactor);
-	scale.tare(10);
-	scaleReading = scale.get_units();
-	previousWeight = scaleReading;
-	lastRateUpdate = millis();
-	statsStart = millis();
-}
-
-float LoadCell::getWeight() { 
-	return scale.get_units(); 
+	tare();
 }
 
 void LoadCell::update() {
-	if (millis() - lastRateUpdate >= sampleInterval) {
-		scaleReading = getWeight();
-		float dw = abs(scaleReading - previousWeight);
-		float dt = (millis() - lastRateUpdate) / 1000;
-		currRate = dw / dt;
-
-		// EMA smoothing
-		smoothedRate = alpha * currRate + (1 - alpha) * smoothedRate;
-
-
-
-
-		// Serial.print("Weight: ");
-		// Serial.println(scaleReading, 1);
-
-		// Serial.print("Smoothed Rate: ");
-		// Serial.println(smoothedRate, 3); 
-
-		// Welford stats
-		// count++;
-		// float delta = smoothedRate - mean;
-		// mean += delta / count;
-		// M2 += delta * (smoothedRate - mean);
-
-		// if (millis() - lastStatsReset >= statsResetInterval) {
-		// 	// Reset Welford stats
-		// 	count = 0;
-		// 	mean = 0;
-		// 	M2 = 0;
-		// 	lastStatsReset = millis();
-		// }
-
-		// if (count >= 10) {
-		// 	feedRateStdDev = sqrt(M2 / (count - 1));
-		// 	dynamicThreshold = feedRateStdDev * thresholdMultiplier;
-
-		// 	Serial.print("Smoothed Rate: ");
-		// 	Serial.println(smoothedRate, 3); 
-		// 	Serial.print(" | Threshold: ");
-		// 	Serial.println(dynamicThreshold, 3);
-		// }
-		previousWeight = scaleReading;
-		lastRateUpdate = millis();
+	if (motorStartTime == 0){
+		startMotorTimer();
+		lastRateUpdateTime = millis();
+		previousWeight = getScaleWeight();
+		return;
 	}
+	else if (millis() - lastRateUpdateTime < sampleInterval) { 
+		return; 
+	}
+
+	scaleReading = getScaleWeight();
+	float dw = abs(scaleReading - previousWeight);
+	float dt = (millis() - lastRateUpdateTime) / 1000.0;
+
+	currRate = dw / dt;
+
+	// EMA smoothing
+	smoothedRate = alpha * currRate + (1 - alpha) * smoothedRate;
+
+	weightWindow[weightInd++] = scaleReading;
+	weightInd = weightInd % windowSize;
+
+	auto minmax = minmax_element(weightWindow.begin(), weightWindow.end());
+	minWeight = *minmax.first;
+	maxWeight = *minmax.second;
+
+	// for (size_t i = 0; i < weightWindow.size(); ++i) {
+	// 	Serial.print(weightWindow[i], 2); // print with 2 decimal places
+	// 	if (i < weightWindow.size() - 1) Serial.print(" | ");
+	// }
+	// Serial.println();
+	// Serial.print("Smoothed Rate: "); 
+	// Serial.println(smoothedRate, 3); 
+	// Serial.println("Weight diff: ");
+	// Serial.println(maxWeight - minWeight, 1);
+	// Serial.println();
+
+	previousWeight = scaleReading;
+	lastRateUpdateTime = millis();
+}
+
+void LoadCell::startMotorTimer() {
+	motorStartTime = millis();
+}
+
+bool LoadCell::shouldStopMotor() {
+	unsigned long elapsed = millis() - motorStartTime;
+	if (elapsed < minMotorRunTime){
+		return false;
+	}
+	else if (elapsed > maxMotorRunTime) { 
+		Serial.println("Motor stop: max time reached");
+		return true; 
+	}
+	else if (isFeedStopped()) {
+		Serial.println("Motor stop: stats condition met");
+		return true;
+	}
+	return false;
 }
 
 bool LoadCell::isFeedStopped() {
-	float stopRateThreshold = 0.2;
-	if (smoothedRate < stopRateThreshold) {
+	if (weightWindow.size() < windowSize) {
+		return false;
+	}
+	
+	if (maxWeight - minWeight < weightChangeThreshold) 
+	{
+		Serial.println("weightFlag true");
+		weightFlag = true;
+	}
+
+	if (smoothedRate < feedRateThreshold) {
 		if (stoppedSince == 0) stoppedSince = millis();
-		if (millis() - stoppedSince >= stopHoldTime) return true;
-	} 
+		if (millis() - stoppedSince >= stopHoldTime) 
+		{
+			Serial.println("rateFlag true");
+			rateFlag = true;
+		}
+	}
 	else {
 		stoppedSince = 0;
 	}
-	return false;
+	return weightFlag && rateFlag;
 }
