@@ -1,0 +1,61 @@
+#include "Motor.h"
+
+Motor::Motor(int in1Pin, int in2Pin)
+    : in1Pin(in1Pin), in2Pin(in2Pin) {}
+
+void Motor::setup() {
+	makeNoise(1000, 400);
+	makeNoise(1550, 400);
+	makeNoise(1750, 400);  
+
+	pinMode(in1Pin, OUTPUT);
+    pinMode(in2Pin, OUTPUT);
+    analogWriteFrequency(motorPWMFrequency);
+    analogWrite(in2Pin, 0);
+	setVoltage(in1Pin, 0);  
+    motorVoltage = 0; 
+}
+
+unsigned long Motor::getMotorMaxTime() const {
+	return motorMaxTime;
+}
+
+void Motor::setVoltage(int driverPin, float newVoltage) {
+	if (lastMotorUpdate == 0) {
+		lastMotorUpdate = millis();
+		return;
+	}
+	else if (millis() - lastMotorUpdate < motorUpdateInterval) {
+		return;
+	}
+	newVoltage = constrain(newVoltage, 0, motorMaxVoltage);
+	int setpoint = (int)((newVoltage / motorMaxVoltage) * 255);
+	analogWrite(driverPin, setpoint);
+	motorVoltage = newVoltage;
+	lastMotorUpdate = millis();
+}
+
+float Motor::getVoltage() const {
+    return motorVoltage;
+}
+
+float Motor::getMinVoltage() const {
+    return motorMinVoltage;
+}
+
+float Motor::getMaxVoltage() const {
+    return motorMaxVoltage;
+}
+
+float Motor::getVoltageStep() const {
+    return motorVoltageStep;
+}
+
+void Motor::makeNoise(int frequency, int duration) {
+	Serial.println("Making Noise");
+	analogWriteFrequency(frequency);
+	setVoltage(in1Pin, 0.3);
+	delay(duration);
+	setVoltage(in1Pin, 0);
+	analogWriteFrequency(motorPWMFrequency);
+}
