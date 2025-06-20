@@ -51,8 +51,11 @@ u_long LastButtonPress = 0;
 int ButtonRunTimeout = 5000; //milliseconds to ignore motor shutoff conditions due to button press
 
 //Button configs
-Button buttonUP = Button(buttonUPpin, BUTTON_PULLDOWN, true, 50);
-Button buttonDOWN = Button(buttonDOWNpin, BUTTON_PULLDOWN, true, 50);
+Button buttonUP(buttonUPpin, BUTTON_PULLDOWN, true, 50);
+Button buttonDOWN(buttonDOWNpin, BUTTON_PULLDOWN, true, 50);
+
+unsigned long tareDelayStartTime = 0;
+bool waitingAfterClick = false;
 //Button Callbacks
 // void onPress(Button& b){
 // 	Serial.print("onPress: ");
@@ -165,6 +168,10 @@ void setup() {
     SleepTimeoutTracker = PrevUpdateTime;
 }
 
+unsigned long buttonHighStartTime = 0;
+unsigned long buttonHighDuration = 0;
+bool buttonWasHigh = false;
+
 void loop() {
     // int toUpdate = ((millis() - PrevUpdateTime) > MotorUpdateTime);
     if(((millis() - SleepTimeoutTracker) > SleepTimeoutTime) || ((millis() - LastButtonPress) > SleepErrorTimeoutTime)){
@@ -189,6 +196,21 @@ void loop() {
     buttonUP.process();
     buttonDOWN.process();
 
+    // // Track how long buttonUPpin stays LOW
+    // if (digitalRead(buttonUPpin) == HIGH) {
+    //     if (!buttonWasHigh) {
+    //         buttonHighStartTime = millis();  // just went HIGH
+    //         buttonWasHigh = true;
+    //     }
+    //     // else: do nothing, keep waiting for LOW
+    // } else {
+    //     if (buttonWasHigh) {
+    //         buttonHighDuration = millis() - buttonHighStartTime;
+    //         Serial.print("Button was HIGH for (ms): ");
+    //         Serial.println(buttonHighDuration);
+    //         buttonWasHigh = false;
+    //     }
+    // }
     //time state evaluations
     // if(buttonUP.buttonstatus != 0 || buttonDOWN.buttonstatus != 0){ LastButtonPress = millis();} //track last button active time
     // if(buttonUP.buttonstatus != 0 || buttonDOWN.buttonstatus != 0 || (scale_reading > WeightTimeoutMinimumBound && scale_reading < WeightTimeoutMaxiumumBound)){ SleepTimeoutTracker = millis();} //delay sleep
@@ -207,8 +229,13 @@ void loop() {
         
 
         case 2:  // Click
-            loadCell.tare();
+            // loadCell.tare();
+            // motor.setVoltage(IN1MotorPin, motor.getMinVoltage());
+            // buttonUP.buttonstatus = 0;
+            // break;
             motor.setVoltage(IN1MotorPin, motor.getMinVoltage());
+            tareDelayStartTime = millis();
+            waitingAfterClick = true;
             buttonUP.buttonstatus = 0;
             break;
 
@@ -241,12 +268,21 @@ void loop() {
             break;
     }
 
-    if (motor.getVoltage() > 0) {
-        loadCell.update();
-        if (loadCell.shouldStopMotor()) {
-            motor.setVoltage(IN1MotorPin, 0);
-            loadCell.tare();
+    if (waitingAfterClick) {
+        if(millis() - tareDelayStartTime >= 1000) {
+            // reset to wait afte click
+            waitingAfterClick = false;
+            tareDelayStartTime = millis();
         }
-    }   
+    }
+    else {
+        if (motor.getVoltage() > 0) {
+            loadCell.update();
+            if (loadCell.shouldStopMotor()) {
+                motor.setVoltage(IN1MotorPin, 0);
+                loadCell.tare();
+            }
+        }   
+    }
     delay(10);
 }

@@ -37,7 +37,8 @@ private:
 	// Timing
 	unsigned long lastRateUpdateTime = 0;
 	const unsigned long sampleInterval = 500;
-	const unsigned long minMotorRunTime = 10000; 
+	const unsigned long minMotorRunTime = 5000; 
+	// const unsigned long minMotorRunTime = 0; 
 	const unsigned long maxMotorRunTime = 50000;
 	unsigned long motorStartTime = 0;
 
@@ -47,7 +48,7 @@ private:
 	const unsigned long stopHoldTime = 0;
 
 	// Stopping thresholds
-	const float weightChangeThreshold = 3.0;
+	const float weightChangeThreshold = 3.5;
 	const float feedRateThreshold = 1.0;
 
 	// Params used to stop

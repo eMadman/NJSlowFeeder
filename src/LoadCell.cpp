@@ -16,7 +16,7 @@ void LoadCell::tare() {
 	currRate = 0;
 	smoothedRate = 0;
 	minWeight = 0; maxWeight = 0;
-	weightFlag = false, rateFlag = 0;
+	weightFlag = false, rateFlag = false;
 	scale.tare(10);
 }
 
@@ -57,16 +57,16 @@ void LoadCell::update() {
 	minWeight = *minmax.first;
 	maxWeight = *minmax.second;
 
-	// for (size_t i = 0; i < weightWindow.size(); ++i) {
-	// 	Serial.print(weightWindow[i], 2); // print with 2 decimal places
-	// 	if (i < weightWindow.size() - 1) Serial.print(" | ");
-	// }
-	// Serial.println();
-	// Serial.print("Smoothed Rate: "); 
-	// Serial.println(smoothedRate, 3); 
-	// Serial.println("Weight diff: ");
-	// Serial.println(maxWeight - minWeight, 1);
-	// Serial.println();
+	for (size_t i = 0; i < weightWindow.size(); ++i) {
+		Serial.print(weightWindow[i], 3); 
+		if (i < weightWindow.size() - 1) Serial.print(" | ");
+	}
+	Serial.println();
+	Serial.print("Weight diff: ");
+	Serial.println(maxWeight - minWeight, 3);
+	Serial.print("Smoothed Rate: "); 
+	Serial.println(smoothedRate, 3); 
+	Serial.println();
 
 	previousWeight = scaleReading;
 	lastRateUpdateTime = millis();
