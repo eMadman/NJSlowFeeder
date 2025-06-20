@@ -178,6 +178,7 @@ void Board::handleButtonAction() {
 
 void Board::processFeedingCycle() {
 	if (waitingAfterClick) {
+		// delay for 1s after clicking button
 		if(millis() - tareDelayStartTime >= 1000) {
 			// reset to wait afte click
 			waitingAfterClick = false;

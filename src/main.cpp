@@ -26,25 +26,7 @@ void loop() {
     }
     //check button states
     board.updateButtons();
-    // // Track how long buttonUPpin stays LOW
-    // if (digitalRead(buttonUPpin) == HIGH) {
-    //     if (!buttonWasHigh) {
-    //         buttonHighStartTime = millis();  // just went HIGH
-    //         buttonWasHigh = true;
-    //     }
-    //     // else: do nothing, keep waiting for LOW
-    // } else {
-    //     if (buttonWasHigh) {
-    //         buttonHighDuration = millis() - buttonHighStartTime;
-    //         Serial.print("Button was HIGH for (ms): ");
-    //         Serial.println(buttonHighDuration);
-    //         buttonWasHigh = false;
-    //     }
-    // }
-    //time state evaluations
-    // if(buttonUP.buttonstatus != 0 || buttonDOWN.buttonstatus != 0){ LastButtonPress = millis();} //track last button active time
-    // if(buttonUP.buttonstatus != 0 || buttonDOWN.buttonstatus != 0 || (scale_reading > WeightTimeoutMinimumBound && scale_reading < WeightTimeoutMaxiumumBound)){ SleepTimeoutTracker = millis();} //delay sleep
-
+    
     //button status evaluations
     board.handleButtonAction();
     board.processFeedingCycle();
