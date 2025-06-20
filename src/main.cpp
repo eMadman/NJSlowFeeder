@@ -9,7 +9,7 @@
 #define BUTTON_PIN_BITMASK(GPIO) (1ULL << GPIO)  // 2 ^ GPIO_NUMBER in hex
 #define WAKEUP_GPIO              GPIO_NUM_5     // Only RTC IO are allowed
 
-float calibrationFactor = 300;
+float calibrationFactor = 1000;
 Board board(calibrationFactor);
 
 void setup() {

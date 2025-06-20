@@ -49,7 +49,7 @@ HX711 scale;
 // float calibration_factor = -5000; //-8g, zero factor ~-340528
 // float calibration_factor = -10000; //-4g, zero factor ~-340528
 // float calibration_factor = -100000; //-0.4g, zero factor ~-340528
-float calibration_factor = 750; 
+float calibration_factor = 1000; 
 
 void setup() {
   Serial.begin(9600);

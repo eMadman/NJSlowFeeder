@@ -16,7 +16,7 @@ public:
     // unsigned long getMotorStartTime() const;
     unsigned long getMotorMaxTime() const;
 
-    void setVoltage(int driverPin, float newVoltage);
+    void setVoltage(int driverPin, float newVoltage, bool forceSet=false);
     // void setMotorStartTime(unsigned long time);
 
 private:

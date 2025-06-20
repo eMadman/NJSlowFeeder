@@ -6,6 +6,13 @@
 #include "LoadCell.h"
 #include "Motor.h"
 
+enum ButtonStatus {
+    BUTTON_IDLE = 0,
+    BUTTON_HOLD = 1,
+    BUTTON_CLICK = 2,
+    BUTTON_DOUBLE_CLICK = 3,
+};
+
 class Board {
 public:
     Board(float calibrationFactor);
@@ -26,8 +33,8 @@ private:
     // GPIO Pins
     static const int IN1MotorPin = 44; //change to 44 if motor runs in reverse
     static const int IN2MotorPin = 7; //change to 7 if motor runs in reverse
-    static const int buttonUPpin = 5; //labeled as D4 on the silkscreen for xiao
-    static const int buttonDOWNpin = 6; //labeled as D5 on the slikscreen for xiao
+    static const int buttonUpPin = 5; //labeled as D4 on the silkscreen for xiao
+    static const int buttonDownPin = 6; //labeled as D5 on the slikscreen for xiao
     static const int HX_DOUT = 9; //hx711, labeled as D10 on the silkscreen for xiao
     static const int HX_CLK = 8; //hx711, labeled as D9 on the silkscreen for xiao
     static const gpio_num_t HX711CLK = GPIO_NUM_8;
@@ -36,12 +43,16 @@ private:
     // Components
     Motor motor;
     LoadCell loadCell;
-    Button buttonUP;
-    Button buttonDOWN;
+    Button buttonUp;
+    Button buttonDown;
 
     // Timing tracking
     unsigned long lastMotorActiveTime;
-    unsigned long tareDelayStartTime;
+    unsigned long delayStartTime;
+	unsigned long lastClickTimeUp;
+    unsigned long lastClickTimeDown; 
+    const unsigned long doubleClickInterval = 500;
+    const unsigned long delayAfterClick = 1000;
     bool waitingAfterClick;
 
     // Config

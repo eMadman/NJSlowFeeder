@@ -16,12 +16,12 @@ unsigned long Motor::getMotorMaxTime() const {
 	return motorMaxTime;
 }
 
-void Motor::setVoltage(int driverPin, float newVoltage) {
-	if (lastMotorUpdate == 0) {
+void Motor::setVoltage(int driverPin, float newVoltage, bool forceSet) {
+	if (!forceSet && lastMotorUpdate == 0) {
 		lastMotorUpdate = millis();
 		return;
 	}
-	else if (millis() - lastMotorUpdate < motorUpdateInterval) {
+	else if (!forceSet && (millis() - lastMotorUpdate < motorUpdateInterval)) {
 		return;
 	}
 	newVoltage = constrain(newVoltage, 0, motorMaxVoltage);

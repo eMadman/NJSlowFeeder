@@ -5,10 +5,12 @@
 Board::Board(float calibrationFactor)
     : motor(IN1MotorPin, IN2MotorPin),
     loadCell(HX_DOUT, HX_CLK, calibrationFactor),
-    buttonUP(buttonUPpin, BUTTON_PULLDOWN, true, 50),
-	buttonDOWN(buttonDOWNpin, BUTTON_PULLDOWN, true, 50),
+    buttonUp(buttonUpPin, BUTTON_PULLDOWN, true, 50),
+	buttonDown(buttonDownPin, BUTTON_PULLDOWN, true, 50),
+	lastClickTimeUp(0),
+	lastClickTimeDown(0),
 	lastMotorActiveTime(0),
-    tareDelayStartTime(0),
+    delayStartTime(0),
     waitingAfterClick(false) {}
 
 void Board::setup() {
@@ -24,24 +26,52 @@ void Board::setup() {
 
     printWakeupReason();
 
-    buttonUP.releaseHandler(onRelease);
-    buttonUP.holdHandler(onHold, 1000);
+    buttonUp.releaseHandler(onRelease);
+    buttonUp.holdHandler(onHold, 1000);
 
-    buttonDOWN.releaseHandler(onRelease);
-    buttonDOWN.holdHandler(onHold, 1000);
+    buttonDown.releaseHandler(onRelease);
+    buttonDown.holdHandler(onHold, 1000);
 
+    delay(1000);
     playStartupChime();
 
 	updateButtons();
-    buttonUP.buttonstatus = 0;
-    buttonDOWN.buttonstatus = 0;
-    Serial.println(buttonUP.buttonstatus);
-    Serial.println(buttonDOWN.buttonstatus);
+    buttonUp.buttonstatus = BUTTON_IDLE;
+    buttonDown.buttonstatus = BUTTON_IDLE;
+
+    Serial.println(buttonUp.buttonstatus);
+    Serial.println(buttonDown.buttonstatus);
 }
 
 void Board::updateButtons() {
-    buttonUP.process();
-    buttonDOWN.process();
+
+    buttonUp.process();
+    buttonDown.process();
+
+    // Double-click detection for UP button
+    if (buttonUp.buttonstatus == BUTTON_CLICK) {
+        unsigned long now = millis();
+        if (now - lastClickTimeUp <= doubleClickInterval) {
+            buttonUp.buttonstatus = BUTTON_DOUBLE_CLICK;
+            lastClickTimeUp = 0; // reset
+        } 
+		else {
+            lastClickTimeUp = now;
+        }
+    }
+
+    // Double-click detection for DOWN button (optional)
+    if (buttonDown.buttonstatus == BUTTON_CLICK) {
+        unsigned long now = millis();
+        if (now - lastClickTimeDown <= doubleClickInterval) {
+			Serial.println("Down button double click");
+            buttonDown.buttonstatus = BUTTON_DOUBLE_CLICK;
+            lastClickTimeDown = 0;
+        } 
+		else {
+            lastClickTimeDown = now;
+        }
+    }
 }
 
 void Board::playStartupChime() {
@@ -59,10 +89,11 @@ void Board::playDeepSleepChime() {
 }
 
 bool Board::shouldSleep() {
-	return (millis() - lastMotorActiveTime > sleepTimeoutTime);
+	return (millis() - lastMotorActiveTime > sleepTimeoutTime) || buttonDown.buttonstatus == BUTTON_DOUBLE_CLICK;
 }
 
 void Board::enterDeepSleep() {
+    delay(500);
     playDeepSleepChime();
 
     // HX711: hold clock HIGH to enter low-power
@@ -103,29 +134,31 @@ void Board::printWakeupReason() {
 void Board::onRelease(Button& b) {
     Serial.print("onRelease: ");
     Serial.println(b.pin);
-    if (b.buttonstatus == 0) {
-        Serial.print("Click: ");
-        Serial.println(b.pin);
-        b.buttonstatus = 2;
-    } else if (b.buttonstatus == 1) {
-        Serial.print("HoldRelease: ");
-        Serial.println(b.pin);
-        b.buttonstatus = 0;
-    } else {
-        Serial.print("Unhandled pin triggered - release");
-        Serial.println(b.buttonstatus);
-    }
+	switch (b.buttonstatus)
+	{
+		case BUTTON_IDLE:
+			Serial.print("Click: ");
+			Serial.println(b.pin);
+			b.buttonstatus = BUTTON_CLICK;
+			break;
+		case BUTTON_HOLD:
+			Serial.print("HoldRelease: ");
+			Serial.println(b.pin);
+			b.buttonstatus = BUTTON_CLICK;
+		default:
+			break;
+    } 	
 }
 
 void Board::onHold(Button& b) {
     Serial.print("onHold: ");
     Serial.println(b.pin);
-    b.buttonstatus = 1;
+    b.buttonstatus = BUTTON_HOLD;
 }
 
 void Board::handleButtonAction() {
-	switch (buttonUP.buttonstatus) {
-        case 1:  // Hold
+	switch (buttonUp.buttonstatus) {
+        case BUTTON_HOLD:  
             if (motor.getVoltage() == 0) {
                 motor.setVoltage(IN1MotorPin, motor.getMinVoltage());
             }
@@ -135,24 +168,29 @@ void Board::handleButtonAction() {
             motor.setVoltage(IN1MotorPin, motor.getVoltage() + motor.getVoltageStep());
             break;
 
-        case 2:  // Click
+        case BUTTON_CLICK:  // Click
             // loadCell.tare();
             // motor.setVoltage(IN1MotorPin, motor.getMinVoltage());
-            // buttonUP.buttonstatus = 0;
+            // buttonUp.buttonstatus = 0;
             // break;
             motor.setVoltage(IN1MotorPin, motor.getMinVoltage());
-            tareDelayStartTime = millis();
+            delayStartTime = millis();
             waitingAfterClick = true;
-            buttonUP.buttonstatus = 0;
+			buttonUp.buttonstatus = BUTTON_IDLE;
             break;
+
+		case BUTTON_DOUBLE_CLICK:
+			motor.setVoltage(IN1MotorPin, motor.getMaxVoltage(), true);
+			buttonUp.buttonstatus = BUTTON_IDLE;
+			break;
 
         default:
             // No action needed
             break;
     }
 
-    switch (buttonDOWN.buttonstatus) {
-        case 1:  // Hold
+    switch (buttonDown.buttonstatus) {
+        case BUTTON_HOLD:  
             if (motor.getVoltage() > 0) {
                 // Serial.print("Holding down; MotorVoltage: ");
                 // Serial.println(constrain(currVoltage - MotorVoltageStep, 0, BusVoltage), 2);
@@ -164,10 +202,10 @@ void Board::handleButtonAction() {
             }
             break;
 
-        case 2:  // Click
+        case BUTTON_CLICK:
             motor.setVoltage(IN1MotorPin, 0);
-            buttonDOWN.buttonstatus = 0;
-            loadCell.tare();
+			buttonDown.buttonstatus = BUTTON_IDLE;
+			loadCell.reset();
             break;
 
         default:
@@ -179,10 +217,11 @@ void Board::handleButtonAction() {
 void Board::processFeedingCycle() {
 	if (waitingAfterClick) {
 		// delay for 1s after clicking button
-		if(millis() - tareDelayStartTime >= 1000) {
+		// to avoid flucuations in readings
+		if(millis() - delayStartTime >= delayAfterClick) {
 			// reset to wait afte click
 			waitingAfterClick = false;
-			tareDelayStartTime = millis();
+			delayStartTime = millis();
 		}
 	}
 	else {
@@ -191,7 +230,7 @@ void Board::processFeedingCycle() {
 			loadCell.update();
 			if (loadCell.shouldStopMotor()) {
 				motor.setVoltage(IN1MotorPin, 0);
-				loadCell.tare();
+				loadCell.reset();
 			}
 		}   
 	}
@@ -199,5 +238,5 @@ void Board::processFeedingCycle() {
 
 Motor& Board::getMotor() { return motor; }
 LoadCell& Board::getLoadCell() { return loadCell; }
-Button& Board::getButtonUp() { return buttonUP; }
-Button& Board::getButtonDown() { return buttonDOWN; }
+Button& Board::getButtonUp() { return buttonUp; }
+Button& Board::getButtonDown() { return buttonDown; }

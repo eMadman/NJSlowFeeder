@@ -4,20 +4,18 @@ LoadCell::LoadCell(int doutPin, int clkPin, float cf, float a)
 	: DOUT(doutPin), CLK(clkPin), calibrationFactor(cf), alpha(a) {}
 
 
-void LoadCell::tare() {
+void LoadCell::reset() {
 	// Serial.println("Taring load cell");
 	weightInd = 0;
 	fill(weightWindow.begin(), weightWindow.end(), 0.0f);
-	motorStartTime = 0;
+	startTime = 0;
 	lastRateUpdateTime = 0;
-	stoppedSince = 0;
+	rateStoppedSince = 0;
+	weightStoppedSince = 0;
 	previousWeight = 0;
-	scaleReading = 0;
-	currRate = 0;
 	smoothedRate = 0;
 	minWeight = 0; maxWeight = 0;
 	weightFlag = false, rateFlag = false;
-	scale.tare(10);
 }
 
 float LoadCell::getScaleWeight() {
@@ -27,29 +25,38 @@ float LoadCell::getScaleWeight() {
 void LoadCell::setup() {
 	scale.begin(DOUT, CLK);
 	scale.set_scale(calibrationFactor);
-	tare();
+}
+
+bool LoadCell::started() const {
+	return startTime != 0;
+}
+
+void LoadCell::startUp() {
+	scale.tare(10);
+	startTime = millis();
+	lastRateUpdateTime = millis();
+	previousWeight = getScaleWeight();
 }
 
 void LoadCell::update() {
-	if (motorStartTime == 0){
-		startMotorTimer();
-		lastRateUpdateTime = millis();
-		previousWeight = getScaleWeight();
+	if (!started()){
+		startUp();
 		return;
 	}
 	else if (millis() - lastRateUpdateTime < sampleInterval) { 
 		return; 
 	}
 
-	scaleReading = getScaleWeight();
+	float scaleReading = getScaleWeight();
 	float dw = abs(scaleReading - previousWeight);
 	float dt = (millis() - lastRateUpdateTime) / 1000.0;
 
-	currRate = dw / dt;
+	float currRate = dw / dt;
 
 	// EMA smoothing
 	smoothedRate = alpha * currRate + (1 - alpha) * smoothedRate;
 
+	// Rolling window to track weights
 	weightWindow[weightInd++] = scaleReading;
 	weightInd = weightInd % windowSize;
 
@@ -72,12 +79,8 @@ void LoadCell::update() {
 	lastRateUpdateTime = millis();
 }
 
-void LoadCell::startMotorTimer() {
-	motorStartTime = millis();
-}
-
 bool LoadCell::shouldStopMotor() {
-	unsigned long elapsed = millis() - motorStartTime;
+	unsigned long elapsed = millis() - startTime;
 	if (elapsed < minMotorRunTime){
 		return false;
 	}
@@ -93,26 +96,39 @@ bool LoadCell::shouldStopMotor() {
 }
 
 bool LoadCell::isFeedStopped() {
-	if (weightWindow.size() < windowSize) {
-		return false;
-	}
-	
-	if (maxWeight - minWeight < weightChangeThreshold) 
-	{
-		Serial.println("weightFlag true");
-		weightFlag = true;
-	}
+    if (weightWindow.size() < windowSize) {
+        return false;
+    }
 
-	if (smoothedRate < feedRateThreshold) {
-		if (stoppedSince == 0) stoppedSince = millis();
-		if (millis() - stoppedSince >= stopHoldTime) 
-		{
-			Serial.println("rateFlag true");
-			rateFlag = true;
-		}
-	}
+    unsigned long now = millis();
+
+    // --- Weight check ---
+    bool weightCond = (maxWeight - minWeight < weightChangeThreshold);
+    if (weightCond) {
+        if (weightStoppedSince == 0) weightStoppedSince = now;
+    } 
 	else {
-		stoppedSince = 0;
-	}
-	return weightFlag && rateFlag;
+        weightStoppedSince = 0;
+    }
+
+    // --- Rate check ---
+    bool rateCond = (smoothedRate < feedRateThreshold);
+    if (rateCond) {
+        if (rateStoppedSince == 0) rateStoppedSince = now;
+    } 
+	else {
+        rateStoppedSince = 0;
+    }
+
+    // Flags for persistent condition 
+    bool weightStuck = weightCond && (now - weightStoppedSince >= stopHoldTime);
+    bool rateStuck   = rateCond   && (now - rateStoppedSince >= stopHoldTime);
+
+    // Final stop condition
+	if (weightCond) { Serial.println("Weight condition met"); }
+	if (rateCond) { Serial.println("Rate condition met"); }
+	if (weightStuck) { Serial.println("Weight condition stuck"); }
+	if (rateStuck) { Serial.println("Rate condition stuck"); }
+
+	return (weightCond && rateCond) || weightStuck || rateStuck;
 }

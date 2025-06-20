@@ -13,9 +13,8 @@ public:
 
 	void setup();
 	void update();               
-	void tare();
+	void reset();
 	float getScaleWeight();
-	void startMotorTimer();
 	bool isFeedStopped();        
 	bool shouldStopMotor();
 
@@ -27,7 +26,6 @@ private:
 
 	// Weight tracking
 	float previousWeight = 0;
-	float scaleReading = 0;
 
 	// Feed rate
 	float currRate = 0;
@@ -38,27 +36,30 @@ private:
 	unsigned long lastRateUpdateTime = 0;
 	const unsigned long sampleInterval = 500;
 	const unsigned long minMotorRunTime = 3000; 
-	// const unsigned long minMotorRunTime = 0; 
 	const unsigned long maxMotorRunTime = 50000;
-	unsigned long motorStartTime = 0;
+	unsigned long startTime = 0;
 
 	// Feed stop detection
 	unsigned long stoppedSince = 0;
-	// No hold after stop criteria met
-	const unsigned long stopHoldTime = 0;
+	const unsigned long stopHoldTime = 2000;
+	unsigned long rateStoppedSince;
+	unsigned long weightStoppedSince;
 
 	// Stopping thresholds
-	const float weightChangeThreshold = 3.5;
-	const float feedRateThreshold = 1.0;
+	const float weightChangeThreshold = 1;
+	const float feedRateThreshold = 0.4;
 
 	// Params used to stop
 	float minWeight;
 	float maxWeight;
 	bool weightFlag = false;
 	bool rateFlag = false;
-	static const int windowSize = 10;
+	static const int windowSize = 8;
 	int weightInd = 0;
 	array<float, windowSize> weightWindow;
+
+	void startUp();
+	bool started() const;
 };
 
 #endif
