@@ -37,7 +37,7 @@ private:
 	// Timing
 	unsigned long lastRateUpdateTime = 0;
 	const unsigned long sampleInterval = 500;
-	const unsigned long minMotorRunTime = 5000; 
+	const unsigned long minMotorRunTime = 3000; 
 	// const unsigned long minMotorRunTime = 0; 
 	const unsigned long maxMotorRunTime = 50000;
 	unsigned long motorStartTime = 0;
