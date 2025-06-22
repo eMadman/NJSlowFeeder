@@ -144,7 +144,7 @@ void Board::onRelease(Button& b) {
 		case BUTTON_HOLD:
 			Serial.print("HoldRelease: ");
 			Serial.println(b.pin);
-			b.buttonstatus = BUTTON_CLICK;
+			b.buttonstatus = BUTTON_IDLE;
 		default:
 			break;
     } 	
@@ -159,13 +159,12 @@ void Board::onHold(Button& b) {
 void Board::handleButtonAction() {
 	switch (buttonUp.buttonstatus) {
         case BUTTON_HOLD:  
-            if (motor.getVoltage() == 0) {
-                motor.setVoltage(IN1MotorPin, motor.getMinVoltage());
-            }
             // Serial.print("Holding Up; Current Voltage: ");
             // Serial.print("Holding Up; New Voltage: ");
             // Serial.println(constrain(currVoltage + motor.getVoltageStep(), 0, motor.getBusVoltage()), 2);
-            motor.setVoltage(IN1MotorPin, motor.getVoltage() + motor.getVoltageStep());
+            if (motor.getVoltage() > 0) {
+                motor.setVoltage(IN1MotorPin, motor.getVoltage() + motor.getVoltageStep());
+            }
             break;
 
         case BUTTON_CLICK:  // Click
