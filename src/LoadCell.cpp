@@ -1,7 +1,9 @@
 #include "LoadCell.h"
 
 LoadCell::LoadCell(int doutPin, int clkPin, float cf, float a)
-	: DOUT(doutPin), CLK(clkPin), calibrationFactor(cf), alpha(a) {}
+	: DOUT(doutPin), CLK(clkPin), calibrationFactor(cf), alpha(a) {
+		minMotorRunTime = max(minMotorRunTime, sampleInterval * windowSize);
+	}
 
 
 void LoadCell::reset() {

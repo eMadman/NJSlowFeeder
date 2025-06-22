@@ -35,7 +35,7 @@ private:
 	// Timing
 	unsigned long lastRateUpdateTime = 0;
 	const unsigned long sampleInterval = 500;
-	const unsigned long minMotorRunTime = 3000; 
+	unsigned long minMotorRunTime = 3000; 
 	const unsigned long maxMotorRunTime = 50000;
 	unsigned long startTime = 0;
 
@@ -46,15 +46,15 @@ private:
 	unsigned long weightStoppedSince;
 
 	// Stopping thresholds
-	const float weightChangeThreshold = 1;
-	const float feedRateThreshold = 0.4;
+	const float weightChangeThreshold = 1.5;
+	const float feedRateThreshold = 0.5;
 
 	// Params used to stop
 	float minWeight;
 	float maxWeight;
 	bool weightFlag = false;
 	bool rateFlag = false;
-	static const int windowSize = 8;
+	static const int windowSize = 10;
 	int weightInd = 0;
 	array<float, windowSize> weightWindow;
 
