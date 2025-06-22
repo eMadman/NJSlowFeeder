@@ -32,6 +32,15 @@ void Board::setup() {
         Serial.println("Load Cell not detected");
     }
 
+    if (isBatteryMonitorConnected()) {
+        batteryMonitorPresent = true;
+        Serial.println("Battery monitor detected");
+    }
+    else {
+        batteryMonitorPresent = false;
+        Serial.println("Battery monitor not detected");
+    }
+
     printWakeupReason();
 
     buttonUp.releaseHandler(onRelease);
@@ -103,6 +112,10 @@ void Board::playDeepSleepChime() {
     motor.makeNoise(1000, 150);
     motor.makeNoise(600, 300);
 }
+bool Board::isBatteryMonitorConnected(int minValidAdc) {
+    int raw = analogRead(batteryPin);
+    return raw > minValidAdc;
+}
 
 bool Board::isHX711Connected(unsigned long timeout) {
     pinMode(HX_DOUT, INPUT);
@@ -123,18 +136,32 @@ void Board::enterDeepSleep() {
     delay(500);
     playDeepSleepChime();
 
-    // HX711: hold clock HIGH to enter low-power
-    rtc_gpio_pulldown_dis(HX711CLK);
-    rtc_gpio_pullup_en(HX711CLK);
+    if (loadCellPresent){
+        // Turn off hx711 pins
+        rtc_gpio_pulldown_dis(HX711CLK);
+        rtc_gpio_pullup_en(HX711CLK);
 
-    pinMode(HX_CLK, OUTPUT);
-    digitalWrite(HX_CLK, HIGH);
-    pinMode(HX_DOUT, OUTPUT);
-    digitalWrite(HX_DOUT, LOW);
+        pinMode(HX_CLK, OUTPUT);
+        digitalWrite(HX_CLK, HIGH);
+        pinMode(HX_DOUT, INPUT);
+    }
+
+    // Turn off motor pins
+    pinMode(IN1MotorPin, OUTPUT);
+    digitalWrite(IN1MotorPin, LOW);
+    pinMode(IN2MotorPin, OUTPUT);
+    digitalWrite(IN2MotorPin, LOW);
+
+    // Put buttonDownPin to input with pullup to avoid floating
+    pinMode(buttonDownPin, INPUT_PULLUP);
+
+    // Turn batteryPin to input
+    if (batteryMonitorPresent){
+        pinMode(batteryPin, INPUT);
+    }
 
     // Wakeup config
     esp_sleep_enable_ext0_wakeup(WAKEUP_GPIO, HIGH);
-
     rtc_gpio_pullup_dis(WAKEUP_GPIO);   
     rtc_gpio_pulldown_en(WAKEUP_GPIO);
 
@@ -143,6 +170,8 @@ void Board::enterDeepSleep() {
     Serial.println((millis() - lastMotorActiveTime) / 1000);
 
     Serial.println("Going to deep sleep");
+    Serial.flush();
+    delay(50);
     esp_deep_sleep_start();
 }
 
@@ -258,17 +287,19 @@ bool Board::shouldStopMotor() {
 }
 
 void Board::checkAndProtectBattery() {
-    int batteryPercent = battery.getBatteryPercentage();
-    Serial.print("Battery level: ");
-    Serial.println(batteryPercent);
+    if (!batteryMonitorPresent){ return; }
 
-    if (batteryPercent <= batteryCriticalThreshold) {
+    int batteryPercent = battery.getBatteryPercentage();
+    // Serial.print("Battery level: ");
+    // Serial.println(batteryPercent);
+
+    if (batteryPercent <= battery.getBatteryCriticalThreshold()) {
         Serial.println("Critical battery! Shutting down to protect battery.");
         motor.setVoltage(IN1MotorPin, 0, true);
         // playLowBatteryChime();
         enterDeepSleep();  // Force sleep
     }
-    else if (batteryPercent <= batteryWarningThreshold) {
+    else if (batteryPercent <= battery.getBatteryWarningThreshold()) {
         Serial.print("Low battery warning: ");
         Serial.print(batteryPercent);
         Serial.println("% remaining.");

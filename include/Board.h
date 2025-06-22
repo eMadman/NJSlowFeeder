@@ -27,6 +27,7 @@ public:
     Button& getButtonUp();
     Button& getButtonDown();
 
+    bool isBatteryMonitorConnected(int minValidAdc = 600);
     bool isHX711Connected(unsigned long timeout);
 
     void checkAndProtectBattery();
@@ -47,17 +48,6 @@ private:
     static const gpio_num_t HX711CLK = GPIO_NUM_8;
     static const gpio_num_t WAKEUP_GPIO = GPIO_NUM_5;
 
-    // Battery controls
-    const float adcReferenceVoltage = 3.3;   // ADC reference on most ESP32 boards
-    const float R1 = 22.0;                   // kohm
-    const float R2 = 10.0;                   // kohm
-    const float voltageDividerRatio = (R1 + R2) / R2; 
-    const float adcResolution = 4095.0; 
-    const float fullVoltage = 4.2;
-    const float emptyVoltage = 3.0;
-    const int batteryWarningThreshold = 20;     // percentage, below this, play warning chime
-    const int batteryCriticalThreshold = 7;     // percentage, below this, warning chime + shut down to protect battery
-
     // Components
     Motor motor;
     LoadCell loadCell;
@@ -76,6 +66,7 @@ private:
     
     // Detect loadCell
     bool loadCellPresent;
+    bool batteryMonitorPresent;
     const unsigned long loadCellDetectTimeout = 1000;
 
     // Config

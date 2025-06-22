@@ -13,3 +13,12 @@ int Battery::getBatteryPercentage() const {
     int percent = (int)(((voltage - emptyVoltage) / (fullVoltage - emptyVoltage)) * 100.0);
     return percent;
 }
+
+int Battery::getBatteryWarningThreshold() const {
+	return batteryWarningThreshold;
+}
+
+int Battery::getBatteryCriticalThreshold() const {
+	return batteryCriticalThreshold;
+}
+

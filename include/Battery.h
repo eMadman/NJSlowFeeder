@@ -7,6 +7,8 @@ class Battery {
 public:
 	Battery(int batteryPin);
     int getBatteryPercentage() const;
+    int getBatteryWarningThreshold() const;
+    int getBatteryCriticalThreshold() const;
 
 private:
 	int batteryPin;
