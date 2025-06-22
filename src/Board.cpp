@@ -5,6 +5,7 @@
 Board::Board(float calibrationFactor)
     : motor(IN1MotorPin, IN2MotorPin),
     loadCell(HX_DOUT, HX_CLK, calibrationFactor),
+    battery(batteryPin),
     buttonUp(buttonUpPin, BUTTON_PULLDOWN, true, 50),
 	buttonDown(buttonDownPin, BUTTON_PULLDOWN, true, 50),
 	lastClickTimeUp(0),
@@ -79,6 +80,14 @@ void Board::updateButtons() {
             lastClickTimeDown = now;
         }
     }
+}
+
+void Board::playLowBatteryChime() {
+    motor.makeNoise(1000, 150);
+    delay(100);
+    motor.makeNoise(800, 150);
+    delay(100);
+    motor.makeNoise(600, 200);
 }
 
 void Board::playStartupChime() {
@@ -246,6 +255,25 @@ bool Board::shouldStopMotor() {
         return motor.shouldStop() || loadCell.shouldStop();
     }
     return motor.shouldStop();
+}
+
+void Board::checkAndProtectBattery() {
+    int batteryPercent = battery.getBatteryPercentage();
+    Serial.print("Battery level: ");
+    Serial.println(batteryPercent);
+
+    if (batteryPercent <= batteryCriticalThreshold) {
+        Serial.println("Critical battery! Shutting down to protect battery.");
+        motor.setVoltage(IN1MotorPin, 0, true);
+        // playLowBatteryChime();
+        enterDeepSleep();  // Force sleep
+    }
+    else if (batteryPercent <= batteryWarningThreshold) {
+        Serial.print("Low battery warning: ");
+        Serial.print(batteryPercent);
+        Serial.println("% remaining.");
+        // playLowBatteryChime();  // Only a warning
+    }
 }
 
 void Board::processFeedingCycle() {

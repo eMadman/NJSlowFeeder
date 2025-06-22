@@ -5,6 +5,7 @@
 #include <Button.h>
 #include "LoadCell.h"
 #include "Motor.h"
+#include "Battery.h"
 
 enum ButtonStatus {
     BUTTON_IDLE = 0,
@@ -28,6 +29,8 @@ public:
 
     bool isHX711Connected(unsigned long timeout);
 
+    void checkAndProtectBattery();
+
     void handleButtonAction();
     bool shouldStopMotor();
     void processFeedingCycle();
@@ -40,12 +43,25 @@ private:
     static const int buttonDownPin = 6; //labeled as D5 on the slikscreen for xiao
     static const int HX_DOUT = 9; //hx711, labeled as D10 on the silkscreen for xiao
     static const int HX_CLK = 8; //hx711, labeled as D9 on the silkscreen for xiao
+    static const int batteryPin = A2; // ADC input from voltage divider
     static const gpio_num_t HX711CLK = GPIO_NUM_8;
     static const gpio_num_t WAKEUP_GPIO = GPIO_NUM_5;
+
+    // Battery controls
+    const float adcReferenceVoltage = 3.3;   // ADC reference on most ESP32 boards
+    const float R1 = 22.0;                   // kohm
+    const float R2 = 10.0;                   // kohm
+    const float voltageDividerRatio = (R1 + R2) / R2; 
+    const float adcResolution = 4095.0; 
+    const float fullVoltage = 4.2;
+    const float emptyVoltage = 3.0;
+    const int batteryWarningThreshold = 20;     // percentage, below this, play warning chime
+    const int batteryCriticalThreshold = 7;     // percentage, below this, warning chime + shut down to protect battery
 
     // Components
     Motor motor;
     LoadCell loadCell;
+    Battery battery;
     Button buttonUp;
     Button buttonDown;
 
@@ -68,6 +84,7 @@ private:
     // Internal callbacks
     static void onRelease(Button& b);
     static void onHold(Button& b);
+    void playLowBatteryChime();
     void playStartupChime();
     void playDeepSleepChime();
     void printWakeupReason();

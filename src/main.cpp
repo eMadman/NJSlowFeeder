@@ -24,6 +24,9 @@ void loop() {
     if (board.shouldSleep()) {
         board.enterDeepSleep();
     }
+    // check battery level
+    board.checkAndProtectBattery();
+
     //check button states
     board.updateButtons();
     
