@@ -10,10 +10,31 @@ void Motor::setup() {
     analogWrite(in2Pin, 0);
 	setVoltage(in1Pin, 0);  
     motorVoltage = 0; 
+	resetMotorStartTime();
 }
 
-unsigned long Motor::getMotorMaxTime() const {
-	return motorMaxTime;
+bool Motor::started() const {
+	return motorStartTime != 0;
+}
+
+void Motor::resetMotorStartTime() {
+	motorStartTime = 0;
+}
+
+void Motor::setMotorStartTime() {
+	motorStartTime = millis();
+}
+
+bool Motor::shouldStop() const {
+	unsigned long elapsed = millis() - motorStartTime;
+	if (elapsed < minMotorRunTime){
+		return false;
+	}
+	else if (elapsed > maxMotorRunTime) { 
+		Serial.println("Motor stop: max time reached");
+		return true; 
+	}
+	return false;
 }
 
 void Motor::setVoltage(int driverPin, float newVoltage, bool forceSet) {

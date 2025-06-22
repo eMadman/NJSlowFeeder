@@ -1,16 +1,14 @@
 #include "LoadCell.h"
 
 LoadCell::LoadCell(int doutPin, int clkPin, float cf, float a)
-	: DOUT(doutPin), CLK(clkPin), calibrationFactor(cf), alpha(a) {
-		minMotorRunTime = max(minMotorRunTime, sampleInterval * windowSize);
-	}
-
+	: DOUT(doutPin), CLK(clkPin), calibrationFactor(cf), alpha(a) {}
 
 void LoadCell::reset() {
-	// Serial.println("Taring load cell");
 	weightInd = 0;
 	fill(weightWindow.begin(), weightWindow.end(), 0.0f);
-	startTime = 0;
+	weightObsCnt = 0;
+	// startTime = 0;
+	started = false;
 	lastRateUpdateTime = 0;
 	rateStoppedSince = 0;
 	weightStoppedSince = 0;
@@ -29,19 +27,21 @@ void LoadCell::setup() {
 	scale.set_scale(calibrationFactor);
 }
 
-bool LoadCell::started() const {
-	return startTime != 0;
-}
+// bool LoadCell::started() const {
+// 	return startTime != 0;
+// }
 
 void LoadCell::startUp() {
+	started = true;
 	scale.tare(10);
-	startTime = millis();
+	// startTime = millis();
 	lastRateUpdateTime = millis();
 	previousWeight = getScaleWeight();
 }
 
 void LoadCell::update() {
-	if (!started()){
+	// if (!started()){
+	if (!started){
 		startUp();
 		return;
 	}
@@ -62,6 +62,8 @@ void LoadCell::update() {
 	weightWindow[weightInd++] = scaleReading;
 	weightInd = weightInd % windowSize;
 
+	if (weightObsCnt < windowSize) weightObsCnt++;
+
 	auto minmax = minmax_element(weightWindow.begin(), weightWindow.end());
 	minWeight = *minmax.first;
 	maxWeight = *minmax.second;
@@ -81,24 +83,9 @@ void LoadCell::update() {
 	lastRateUpdateTime = millis();
 }
 
-bool LoadCell::shouldStopMotor() {
-	unsigned long elapsed = millis() - startTime;
-	if (elapsed < minMotorRunTime){
-		return false;
-	}
-	else if (elapsed > maxMotorRunTime) { 
-		Serial.println("Motor stop: max time reached");
-		return true; 
-	}
-	else if (isFeedStopped()) {
-		Serial.println("Motor stop: stats condition met");
-		return true;
-	}
-	return false;
-}
 
-bool LoadCell::isFeedStopped() {
-    if (weightWindow.size() < windowSize) {
+bool LoadCell::shouldStop() {
+    if (weightObsCnt < windowSize) {
         return false;
     }
 

@@ -26,7 +26,10 @@ public:
     Button& getButtonUp();
     Button& getButtonDown();
 
+    bool isHX711Connected(unsigned long timeout);
+
     void handleButtonAction();
+    bool shouldStopMotor();
     void processFeedingCycle();
 
 private:
@@ -54,6 +57,10 @@ private:
     const unsigned long doubleClickInterval = 500;
     const unsigned long delayAfterClick = 1000;
     bool waitingAfterClick;
+    
+    // Detect loadCell
+    bool loadCellPresent;
+    const unsigned long loadCellDetectTimeout = 1000;
 
     // Config
     const int sleepTimeoutTime = 30000;
@@ -61,7 +68,6 @@ private:
     // Internal callbacks
     static void onRelease(Button& b);
     static void onHold(Button& b);
-
     void playStartupChime();
     void playDeepSleepChime();
     void printWakeupReason();

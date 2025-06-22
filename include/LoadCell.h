@@ -15,14 +15,16 @@ public:
 	void update();               
 	void reset();
 	float getScaleWeight();
-	bool isFeedStopped();        
-	bool shouldStopMotor();
+	bool shouldStop();        
 
 private:
 	HX711 scale;
 	float calibrationFactor;
 
 	int DOUT, CLK;
+
+	// track if load cell started
+	bool started;
 
 	// Weight tracking
 	float previousWeight = 0;
@@ -34,10 +36,7 @@ private:
 
 	// Timing
 	unsigned long lastRateUpdateTime = 0;
-	const unsigned long sampleInterval = 500;
-	unsigned long minMotorRunTime = 3000; 
-	const unsigned long maxMotorRunTime = 50000;
-	unsigned long startTime = 0;
+	const unsigned long sampleInterval = 500; // controls how frequent (ms) loadCell update readings
 
 	// Feed stop detection
 	unsigned long stoppedSince = 0;
@@ -57,9 +56,10 @@ private:
 	static const int windowSize = 10;
 	int weightInd = 0;
 	array<float, windowSize> weightWindow;
+	int weightObsCnt = 0;
 
 	void startUp();
-	bool started() const;
+	// bool started() const;
 };
 
 #endif

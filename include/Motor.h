@@ -13,18 +13,19 @@ public:
     float getMinVoltage() const;
     float getMaxVoltage() const;
     float getVoltageStep() const;
-    // unsigned long getMotorStartTime() const;
-    unsigned long getMotorMaxTime() const;
-
     void setVoltage(int driverPin, float newVoltage, bool forceSet=false);
-    // void setMotorStartTime(unsigned long time);
+    void resetMotorStartTime();
+    void setMotorStartTime();
+    bool started() const;
+    bool shouldStop() const;
 
 private:
     int in1Pin;
     int in2Pin;
 
-	// unsigned long motorStartTime = 0;
-	const unsigned long motorMaxTime = 60000; //milliseconds to run motor
+	unsigned long minMotorRunTime = 3000; 
+	const unsigned long maxMotorRunTime = 60000;
+	unsigned long motorStartTime = 0;
 
 	unsigned long lastMotorUpdate = 0;
 	const unsigned long motorUpdateInterval = 500; //milliseconds, controls how frequently the motor voltage gets updated

@@ -21,8 +21,15 @@ void Board::setup() {
     motor.setup();
     Serial.println("Setting up motor");
 
-    loadCell.setup();
-    Serial.println("Setting up loadCell");
+    if (isHX711Connected(loadCellDetectTimeout)) {
+        loadCellPresent = true;
+        loadCell.setup();
+        Serial.println("Setting up loadCell");
+    }
+    else {
+        loadCellPresent = false;
+        Serial.println("Load Cell not detected");
+    }
 
     printWakeupReason();
 
@@ -88,6 +95,17 @@ void Board::playDeepSleepChime() {
     motor.makeNoise(600, 300);
 }
 
+bool Board::isHX711Connected(unsigned long timeout) {
+    pinMode(HX_DOUT, INPUT);
+    unsigned long start = millis();
+    while (digitalRead(HX_DOUT) == HIGH) {
+        if (millis() - start > timeout) {
+            return false; // Not ready in time — possibly disconnected
+        }
+    }
+    return true;
+}
+
 bool Board::shouldSleep() {
 	return (millis() - lastMotorActiveTime > sleepTimeoutTime) || buttonDown.buttonstatus == BUTTON_DOUBLE_CLICK;
 }
@@ -106,7 +124,7 @@ void Board::enterDeepSleep() {
     digitalWrite(HX_DOUT, LOW);
 
     // Wakeup config
-    esp_sleep_enable_ext0_wakeup(WAKEUP_GPIO, 1);
+    esp_sleep_enable_ext0_wakeup(WAKEUP_GPIO, HIGH);
 
     rtc_gpio_pullup_dis(WAKEUP_GPIO);   
     rtc_gpio_pulldown_en(WAKEUP_GPIO);
@@ -172,6 +190,10 @@ void Board::handleButtonAction() {
             // motor.setVoltage(IN1MotorPin, motor.getMinVoltage());
             // buttonUp.buttonstatus = 0;
             // break;
+            if (!motor.started()) {
+                motor.setMotorStartTime();
+            }
+
             motor.setVoltage(IN1MotorPin, motor.getMinVoltage());
             delayStartTime = millis();
             waitingAfterClick = true;
@@ -179,6 +201,9 @@ void Board::handleButtonAction() {
             break;
 
 		case BUTTON_DOUBLE_CLICK:
+            if (!motor.started()) {
+                motor.setMotorStartTime();
+            }
 			motor.setVoltage(IN1MotorPin, motor.getMaxVoltage(), true);
 			buttonUp.buttonstatus = BUTTON_IDLE;
 			break;
@@ -202,9 +227,12 @@ void Board::handleButtonAction() {
             break;
 
         case BUTTON_CLICK:
+            motor.resetMotorStartTime();
             motor.setVoltage(IN1MotorPin, 0);
 			buttonDown.buttonstatus = BUTTON_IDLE;
-			loadCell.reset();
+            if (loadCellPresent) {
+                loadCell.reset();
+            }
             break;
 
         default:
@@ -213,8 +241,15 @@ void Board::handleButtonAction() {
     }
 }
 
+bool Board::shouldStopMotor() {
+    if (loadCellPresent) {
+        return motor.shouldStop() || loadCell.shouldStop();
+    }
+    return motor.shouldStop();
+}
+
 void Board::processFeedingCycle() {
-	if (waitingAfterClick) {
+	if (loadCellPresent && waitingAfterClick) {
 		// delay for 1s after clicking button
 		// to avoid flucuations in readings
 		if(millis() - delayStartTime >= delayAfterClick) {
@@ -226,10 +261,15 @@ void Board::processFeedingCycle() {
 	else {
 		if (motor.getVoltage() > 0) {
 			lastMotorActiveTime = millis();
-			loadCell.update();
-			if (loadCell.shouldStopMotor()) {
+            if (loadCellPresent){
+                loadCell.update();
+            }
+			if (shouldStopMotor()) {
 				motor.setVoltage(IN1MotorPin, 0);
-				loadCell.reset();
+                motor.resetMotorStartTime();
+                if (loadCellPresent){
+                    loadCell.reset();
+                }
 			}
 		}   
 	}
