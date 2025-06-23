@@ -149,8 +149,13 @@ void Board::enterDeepSleep() {
     // Turn off motor pins
     pinMode(IN1MotorPin, OUTPUT);
     digitalWrite(IN1MotorPin, LOW);
+    delay(10);
+    pinMode(IN1MotorPin, INPUT);
+
     pinMode(IN2MotorPin, OUTPUT);
     digitalWrite(IN2MotorPin, LOW);
+    delay(10);
+    pinMode(IN2MotorPin, INPUT);
 
     // Put buttonDownPin to input with pullup to avoid floating
     pinMode(buttonDownPin, INPUT_PULLUP);
@@ -165,7 +170,7 @@ void Board::enterDeepSleep() {
     rtc_gpio_pullup_dis(WAKEUP_GPIO);   
     rtc_gpio_pulldown_en(WAKEUP_GPIO);
 
-      // Report
+    // Report
     Serial.print("Motor idle for (s): ");
     Serial.println((millis() - lastMotorActiveTime) / 1000);
 
