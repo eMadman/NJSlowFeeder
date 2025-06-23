@@ -6,6 +6,7 @@
 #include "LoadCell.h"
 #include "Motor.h"
 #include "Battery.h"
+#include "driver/rtc_io.h"
 
 enum ButtonStatus {
     BUTTON_IDLE = 0,
@@ -28,7 +29,6 @@ public:
     Button& getButtonDown();
 
     void handleButtonAction();
-    bool shouldStopMotor();
     void processFeedingCycle();
 
 private:
@@ -40,8 +40,10 @@ private:
     static const int HX_DOUT = 9; //hx711, labeled as D10 on the silkscreen for xiao
     static const int HX_CLK = 8; //hx711, labeled as D9 on the silkscreen for xiao
     static const int batteryPin = A2; // ADC input from voltage divider
-    static const gpio_num_t HX711CLK = GPIO_NUM_8;
+    static const gpio_num_t HX711CLK_GPIO = GPIO_NUM_8;
     static const gpio_num_t WAKEUP_GPIO = GPIO_NUM_5;
+    static const gpio_num_t IN1_GPIO = GPIO_NUM_7;
+    static const gpio_num_t BATTERYPIN_GPIO = GPIO_NUM_3;
 
     // Components
     Motor motor;
@@ -92,6 +94,11 @@ private:
     void playStartupChime();
     void playDeepSleepChime();
     void printWakeupReason() const;
+
+    bool shouldStopMotor();
+    
+    // Power saving
+    void configureRtcPin(gpio_num_t pin, rtc_gpio_mode_t mode = RTC_GPIO_MODE_INPUT_ONLY, bool enablePullup = false, bool enablePulldown = true);
 };
 
 #endif // BOARD_H

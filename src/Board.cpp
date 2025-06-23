@@ -1,6 +1,6 @@
 #include "Board.h"
 #include <Arduino.h>
-#include "driver/rtc_io.h"
+// #include "driver/rtc_io.h"
 
 Board::Board(float calibrationFactor)
     : motor(IN1MotorPin, IN2MotorPin),
@@ -160,20 +160,40 @@ bool Board::shouldSleep() {
 	return timeout || buttonDown.buttonstatus == BUTTON_DOUBLE_CLICK;
 }
 
+void Board::configureRtcPin(gpio_num_t pin, rtc_gpio_mode_t mode, bool enablePullup, bool enablePulldown) {
+    rtc_gpio_init(pin);
+    rtc_gpio_set_direction(pin, mode);
+
+    if (enablePullup) {
+        rtc_gpio_pullup_en(pin);
+    } 
+    else {
+        rtc_gpio_pullup_dis(pin);
+    }
+
+    if (enablePulldown) {
+        rtc_gpio_pulldown_en(pin);
+    } 
+    else {
+        rtc_gpio_pulldown_dis(pin);
+    }
+}
+
 void Board::enterDeepSleep() {
     delay(500);
     playDeepSleepChime();
 
     if (loadCellPresent){
-        // Turn off hx711 pins
-        rtc_gpio_pulldown_dis(HX711CLK);
-        rtc_gpio_pullup_en(HX711CLK);
+        // RTC hx711 CLK pin high power saving
+        configureRtcPin(HX711CLK_GPIO, RTC_GPIO_MODE_OUTPUT_ONLY, true, false);
 
         pinMode(HX_CLK, OUTPUT);
         digitalWrite(HX_CLK, HIGH);
         pinMode(HX_DOUT, INPUT);
     }
-
+    
+    // RTC motor pin power saving
+    configureRtcPin(IN1_GPIO);
     // Turn off motor pins
     pinMode(IN1MotorPin, OUTPUT);
     digitalWrite(IN1MotorPin, LOW);
@@ -185,18 +205,18 @@ void Board::enterDeepSleep() {
     delay(10);
     pinMode(IN2MotorPin, INPUT);
 
-    // Put buttonDownPin to input with pullup to avoid floating
-    pinMode(buttonDownPin, INPUT_PULLUP);
-
     // Turn batteryPin to input
     if (batteryMonitorPresent){
+        configureRtcPin(BATTERYPIN_GPIO);
         pinMode(batteryPin, INPUT);
     }
 
+    // Put buttonDownPin to input with pullup to avoid floating
+    pinMode(buttonDownPin, INPUT_PULLUP);
+
     // Wakeup config
+    configureRtcPin(WAKEUP_GPIO);
     esp_sleep_enable_ext0_wakeup(WAKEUP_GPIO, HIGH);
-    rtc_gpio_pullup_dis(WAKEUP_GPIO);   
-    rtc_gpio_pulldown_en(WAKEUP_GPIO);
 
     // Report
     Serial.print("System idle for (s): ");
@@ -231,7 +251,7 @@ void Board::onRelease(Button& button) {
 			button.buttonstatus = BUTTON_CLICK;
 			break;
 		case BUTTON_HOLD:
-			Serial.print("HoldRelease: ");
+			// Serial.print("HoldRelease: ");
 			// Serial.println(b.pin);
 			button.buttonstatus = BUTTON_IDLE;
 		default:
