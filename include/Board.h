@@ -27,11 +27,6 @@ public:
     Button& getButtonUp();
     Button& getButtonDown();
 
-    bool isBatteryMonitorConnected(int minValidAdc = 600);
-    bool isHX711Connected(unsigned long timeout);
-
-    void checkAndProtectBattery();
-
     void handleButtonAction();
     bool shouldStopMotor();
     void processFeedingCycle();
@@ -56,29 +51,47 @@ private:
     Button buttonDown;
 
     // Timing tracking
-    unsigned long lastMotorActiveTime;
-    unsigned long delayStartTime;
-	unsigned long lastClickTimeUp;
-    unsigned long lastClickTimeDown; 
-    const unsigned long doubleClickInterval = 500;
-    const unsigned long delayAfterClick = 1000;
-    bool waitingAfterClick;
+    unsigned long lastMotorActiveTime = 0;
+    unsigned long lastButtonActiveTime = 0;
     
-    // Detect loadCell
+    // loadCell
     bool loadCellPresent;
+    unsigned long delayStartTime = 0;
+    bool waitingAfterClick = false;
+    const unsigned long delayAfterClick = 1000;
+
+    // batteryMonitor
     bool batteryMonitorPresent;
-    const unsigned long loadCellDetectTimeout = 1000;
+    bool batteryWarning = false;
+    bool batteryCritical = false;
+
+    // Double click tracking
+    bool pendingClickUp = false;
+    bool pendingClickDown = false;
+	unsigned long clickUpStartTime = 0;
+    unsigned long clickDownStartTime = 0; 
+    const unsigned long doubleClickInterval = 400;
 
     // Config
-    const int sleepTimeoutTime = 30000;
+    const int sleepTimeoutTime = 30000; // inactive time before system goes to sleep
 
     // Internal callbacks
-    static void onRelease(Button& b);
-    static void onHold(Button& b);
+    static void onRelease(Button& button);
+    static void onHold(Button& button);
+
+    // Detect components
+    bool isBatteryMonitorConnected(int minValidAdc = 600);
+    bool isHX711Connected(unsigned long timeout = 1000);
+
+    // Double click
+    void handleDoubleClick(Button& button, bool& pendingClick, unsigned long& clickStartTime);
+
+    // Chimes
+    void playBatteryLevelChime();
     void playLowBatteryChime();
     void playStartupChime();
     void playDeepSleepChime();
-    void printWakeupReason();
+    void printWakeupReason() const;
 };
 
 #endif // BOARD_H

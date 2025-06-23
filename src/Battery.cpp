@@ -14,11 +14,11 @@ int Battery::getBatteryPercentage() const {
     return percent;
 }
 
-int Battery::getBatteryWarningThreshold() const {
-	return batteryWarningThreshold;
+bool Battery::isBatteryWarning() const {
+    return getBatteryPercentage() <= batteryWarningThreshold;
 }
 
-int Battery::getBatteryCriticalThreshold() const {
-	return batteryCriticalThreshold;
+bool Battery::isBatteryCritical() const {
+    return getBatteryPercentage() <= batteryCriticalThreshold;
 }
 

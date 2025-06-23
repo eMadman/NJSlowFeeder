@@ -10,14 +10,14 @@ void Motor::setup() {
     analogWrite(in2Pin, 0);
 	setVoltage(in1Pin, 0);  
     motorVoltage = 0; 
-	resetMotorStartTime();
+	reset();
 }
 
 bool Motor::started() const {
 	return motorStartTime != 0;
 }
 
-void Motor::resetMotorStartTime() {
+void Motor::reset() {
 	motorStartTime = 0;
 }
 
@@ -31,7 +31,7 @@ bool Motor::shouldStop() const {
 		return false;
 	}
 	else if (elapsed > maxMotorRunTime) { 
-		Serial.println("Motor stop: max time reached");
+		// Serial.println("Motor stop: max time reached");
 		return true; 
 	}
 	return false;
@@ -71,8 +71,8 @@ float Motor::getVoltageStep() const {
 void Motor::makeNoise(int frequency, int duration) {
 	// Serial.println("Making Noise");
 	analogWriteFrequency(frequency);
-	setVoltage(in1Pin, 0.3);
+	setVoltage(in1Pin, 0.3, true);
 	delay(duration);
-	setVoltage(in1Pin, 0);
+	setVoltage(in1Pin, 0, true);
 	analogWriteFrequency(motorPWMFrequency);
 }

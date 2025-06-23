@@ -7,11 +7,11 @@ class Battery {
 public:
 	Battery(int batteryPin);
     int getBatteryPercentage() const;
-    int getBatteryWarningThreshold() const;
-    int getBatteryCriticalThreshold() const;
+    bool isBatteryWarning() const;
+    bool isBatteryCritical() const;
 
 private:
-	int batteryPin;
+	const int batteryPin;
     // Battery controls
     const float adcReferenceVoltage = 3.3;   // ADC reference on most ESP32 boards
     const float R1 = 22.0;                   // kohm

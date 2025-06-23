@@ -7,22 +7,17 @@ Board::Board(float calibrationFactor)
     loadCell(HX_DOUT, HX_CLK, calibrationFactor),
     battery(batteryPin),
     buttonUp(buttonUpPin, BUTTON_PULLDOWN, true, 50),
-	buttonDown(buttonDownPin, BUTTON_PULLDOWN, true, 50),
-	lastClickTimeUp(0),
-	lastClickTimeDown(0),
-	lastMotorActiveTime(0),
-    delayStartTime(0),
-    waitingAfterClick(false) {}
+	buttonDown(buttonDownPin, BUTTON_PULLDOWN, true, 50) {}
 
 void Board::setup() {
     Serial.begin(115200);
-    delay(10);
+    delay(2500);
     Serial.println("Starting up...");
 
     motor.setup();
     Serial.println("Setting up motor");
 
-    if (isHX711Connected(loadCellDetectTimeout)) {
+    if (isHX711Connected()) {
         loadCellPresent = true;
         loadCell.setup();
         Serial.println("Setting up loadCell");
@@ -34,6 +29,12 @@ void Board::setup() {
 
     if (isBatteryMonitorConnected()) {
         batteryMonitorPresent = true;
+        if (battery.isBatteryCritical()) {
+            batteryCritical = true;
+        }
+        else if (battery.isBatteryWarning()) {
+            batteryWarning = true;
+        }
         Serial.println("Battery monitor detected");
     }
     else {
@@ -50,52 +51,76 @@ void Board::setup() {
     buttonDown.holdHandler(onHold, 1000);
 
     delay(1000);
-    playStartupChime();
+    if (batteryCritical || batteryWarning) {
+        playLowBatteryChime();
+    }
+    else {
+        playStartupChime();
+    }
 
-	updateButtons();
-    buttonUp.buttonstatus = BUTTON_IDLE;
-    buttonDown.buttonstatus = BUTTON_IDLE;
-
-    Serial.println(buttonUp.buttonstatus);
-    Serial.println(buttonDown.buttonstatus);
-}
-
-void Board::updateButtons() {
-
+	// updateButtons();
     buttonUp.process();
     buttonDown.process();
+    buttonUp.buttonstatus = BUTTON_IDLE;
+    buttonDown.buttonstatus = BUTTON_IDLE;
+}
 
-    // Double-click detection for UP button
-    if (buttonUp.buttonstatus == BUTTON_CLICK) {
-        unsigned long now = millis();
-        if (now - lastClickTimeUp <= doubleClickInterval) {
-            buttonUp.buttonstatus = BUTTON_DOUBLE_CLICK;
-            lastClickTimeUp = 0; // reset
+void Board::handleDoubleClick(Button& button, bool& pendingClick, unsigned long& clickStartTime) {
+    unsigned long now = millis();
+
+    if (button.buttonstatus == BUTTON_CLICK) {
+        if (pendingClick && (now - clickStartTime <= doubleClickInterval)) {
+            button.buttonstatus = BUTTON_DOUBLE_CLICK;
+            pendingClick = false;
         } 
-		else {
-            lastClickTimeUp = now;
+        else {
+            // Temporarily assign to idle to wait for second click decision
+            button.buttonstatus = BUTTON_IDLE;
+            pendingClick = true;
+            clickStartTime = now;
         }
     }
 
-    // Double-click detection for DOWN button (optional)
-    if (buttonDown.buttonstatus == BUTTON_CLICK) {
-        unsigned long now = millis();
-        if (now - lastClickTimeDown <= doubleClickInterval) {
-			Serial.println("Down button double click");
-            buttonDown.buttonstatus = BUTTON_DOUBLE_CLICK;
-            lastClickTimeDown = 0;
-        } 
-		else {
-            lastClickTimeDown = now;
-        }
+    if (pendingClick && (now - clickStartTime > doubleClickInterval)) {
+        button.buttonstatus = BUTTON_CLICK;
+        pendingClick = false;
+    }
+}
+
+void Board::updateButtons() {
+    // Update button response
+    buttonUp.process();
+    buttonDown.process();
+
+    // Double-click detection 
+    handleDoubleClick(buttonUp, pendingClickUp, clickUpStartTime);
+    handleDoubleClick(buttonDown, pendingClickDown, clickDownStartTime);
+}
+
+void Board::playBatteryLevelChime() {
+    int percentage = battery.getBatteryPercentage();
+
+    int chimeCount = 0;
+    if (percentage < 30) {
+        chimeCount = 1;
+    } 
+    else if (percentage <= 65) {
+        chimeCount = 2;
+    } 
+    else {
+        chimeCount = 3;
+    }
+    Serial.print("Battery level (%): ");
+    Serial.println(percentage);
+    for (int i = 0; i < chimeCount; ++i) {
+        motor.makeNoise(800, 300);
+        delay(150);
     }
 }
 
 void Board::playLowBatteryChime() {
     motor.makeNoise(1000, 150);
-    delay(100);
     motor.makeNoise(800, 150);
-    delay(100);
     motor.makeNoise(600, 200);
 }
 
@@ -112,6 +137,7 @@ void Board::playDeepSleepChime() {
     motor.makeNoise(1000, 150);
     motor.makeNoise(600, 300);
 }
+
 bool Board::isBatteryMonitorConnected(int minValidAdc) {
     int raw = analogRead(batteryPin);
     return raw > minValidAdc;
@@ -129,7 +155,9 @@ bool Board::isHX711Connected(unsigned long timeout) {
 }
 
 bool Board::shouldSleep() {
-	return (millis() - lastMotorActiveTime > sleepTimeoutTime) || buttonDown.buttonstatus == BUTTON_DOUBLE_CLICK;
+    unsigned long now = millis();
+    bool timeout = (now - lastMotorActiveTime > sleepTimeoutTime) && (now - lastButtonActiveTime > sleepTimeoutTime);
+	return timeout || buttonDown.buttonstatus == BUTTON_DOUBLE_CLICK;
 }
 
 void Board::enterDeepSleep() {
@@ -171,16 +199,16 @@ void Board::enterDeepSleep() {
     rtc_gpio_pulldown_en(WAKEUP_GPIO);
 
     // Report
-    Serial.print("Motor idle for (s): ");
-    Serial.println((millis() - lastMotorActiveTime) / 1000);
+    Serial.print("System idle for (s): ");
+    Serial.println(min((millis() - lastMotorActiveTime), (millis() - lastButtonActiveTime)) / 1000);
 
-    Serial.println("Going to deep sleep");
     Serial.flush();
     delay(50);
+    Serial.println("Going to deep sleep");
     esp_deep_sleep_start();
 }
 
-void Board::printWakeupReason() {
+void Board::printWakeupReason() const {
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     switch (wakeup_reason) {
         case ESP_SLEEP_WAKEUP_EXT0: Serial.println("Wakeup caused by external signal using RTC_IO"); break;
@@ -192,29 +220,29 @@ void Board::printWakeupReason() {
     }
 }
 
-void Board::onRelease(Button& b) {
-    Serial.print("onRelease: ");
-    Serial.println(b.pin);
-	switch (b.buttonstatus)
+void Board::onRelease(Button& button) {
+    // Serial.print("onRelease: ");
+    // Serial.println(button.pin);
+	switch (button.buttonstatus)
 	{
 		case BUTTON_IDLE:
-			Serial.print("Click: ");
-			Serial.println(b.pin);
-			b.buttonstatus = BUTTON_CLICK;
+			// Serial.print("Click: ");
+			// Serial.println(b.pin);
+			button.buttonstatus = BUTTON_CLICK;
 			break;
 		case BUTTON_HOLD:
 			Serial.print("HoldRelease: ");
-			Serial.println(b.pin);
-			b.buttonstatus = BUTTON_IDLE;
+			// Serial.println(b.pin);
+			button.buttonstatus = BUTTON_IDLE;
 		default:
 			break;
     } 	
 }
 
-void Board::onHold(Button& b) {
-    Serial.print("onHold: ");
-    Serial.println(b.pin);
-    b.buttonstatus = BUTTON_HOLD;
+void Board::onHold(Button& button) {
+    // Serial.print("onHold: ");
+    // Serial.println(button.pin);
+    button.buttonstatus = BUTTON_HOLD;
 }
 
 void Board::handleButtonAction() {
@@ -223,6 +251,7 @@ void Board::handleButtonAction() {
             // Serial.print("Holding Up; Current Voltage: ");
             // Serial.print("Holding Up; New Voltage: ");
             // Serial.println(constrain(currVoltage + motor.getVoltageStep(), 0, motor.getBusVoltage()), 2);
+            lastButtonActiveTime = millis();
             if (motor.getVoltage() > 0) {
                 motor.setVoltage(IN1MotorPin, motor.getVoltage() + motor.getVoltageStep());
             }
@@ -233,10 +262,10 @@ void Board::handleButtonAction() {
             // motor.setVoltage(IN1MotorPin, motor.getMinVoltage());
             // buttonUp.buttonstatus = 0;
             // break;
+            lastButtonActiveTime = millis();
             if (!motor.started()) {
                 motor.setMotorStartTime();
             }
-
             motor.setVoltage(IN1MotorPin, motor.getMinVoltage());
             delayStartTime = millis();
             waitingAfterClick = true;
@@ -244,10 +273,13 @@ void Board::handleButtonAction() {
             break;
 
 		case BUTTON_DOUBLE_CLICK:
+            lastButtonActiveTime = millis();
             if (!motor.started()) {
                 motor.setMotorStartTime();
             }
 			motor.setVoltage(IN1MotorPin, motor.getMaxVoltage(), true);
+            delayStartTime = millis();
+            waitingAfterClick = true;
 			buttonUp.buttonstatus = BUTTON_IDLE;
 			break;
 
@@ -258,10 +290,8 @@ void Board::handleButtonAction() {
 
     switch (buttonDown.buttonstatus) {
         case BUTTON_HOLD:  
+            lastButtonActiveTime = millis();
             if (motor.getVoltage() > 0) {
-                // Serial.print("Holding down; MotorVoltage: ");
-                // Serial.println(constrain(currVoltage - MotorVoltageStep, 0, BusVoltage), 2);
-                
                 // ensure motor doesn't stop when holding down button
                 float newVoltage = motor.getVoltage() - motor.getVoltageStep();
                 newVoltage = max(newVoltage, motor.getMinVoltage());
@@ -270,12 +300,18 @@ void Board::handleButtonAction() {
             break;
 
         case BUTTON_CLICK:
-            motor.resetMotorStartTime();
-            motor.setVoltage(IN1MotorPin, 0);
-			buttonDown.buttonstatus = BUTTON_IDLE;
-            if (loadCellPresent) {
-                loadCell.reset();
+            lastButtonActiveTime = millis();
+            if (motor.getVoltage() > 0) {
+                motor.reset();
+                motor.setVoltage(IN1MotorPin, 0);
+                if (loadCellPresent) {
+                    loadCell.reset();
+                }
             }
+            else if (batteryMonitorPresent) {
+                playBatteryLevelChime();
+            }
+            buttonDown.buttonstatus = BUTTON_IDLE;
             break;
 
         default:
@@ -291,27 +327,6 @@ bool Board::shouldStopMotor() {
     return motor.shouldStop();
 }
 
-void Board::checkAndProtectBattery() {
-    if (!batteryMonitorPresent){ return; }
-
-    int batteryPercent = battery.getBatteryPercentage();
-    // Serial.print("Battery level: ");
-    // Serial.println(batteryPercent);
-
-    if (batteryPercent <= battery.getBatteryCriticalThreshold()) {
-        Serial.println("Critical battery! Shutting down to protect battery.");
-        motor.setVoltage(IN1MotorPin, 0, true);
-        // playLowBatteryChime();
-        enterDeepSleep();  // Force sleep
-    }
-    else if (batteryPercent <= battery.getBatteryWarningThreshold()) {
-        Serial.print("Low battery warning: ");
-        Serial.print(batteryPercent);
-        Serial.println("% remaining.");
-        // playLowBatteryChime();  // Only a warning
-    }
-}
-
 void Board::processFeedingCycle() {
 	if (loadCellPresent && waitingAfterClick) {
 		// delay for 1s after clicking button
@@ -324,13 +339,14 @@ void Board::processFeedingCycle() {
 	}
 	else {
 		if (motor.getVoltage() > 0) {
+            Serial.println("Voltage > 0");
 			lastMotorActiveTime = millis();
             if (loadCellPresent){
                 loadCell.update();
             }
 			if (shouldStopMotor()) {
 				motor.setVoltage(IN1MotorPin, 0);
-                motor.resetMotorStartTime();
+                motor.reset();
                 if (loadCellPresent){
                     loadCell.reset();
                 }

@@ -14,7 +14,7 @@ public:
     float getMaxVoltage() const;
     float getVoltageStep() const;
     void setVoltage(int driverPin, float newVoltage, bool forceSet=false);
-    void resetMotorStartTime();
+    void reset();
     void setMotorStartTime();
     bool started() const;
     bool shouldStop() const;
