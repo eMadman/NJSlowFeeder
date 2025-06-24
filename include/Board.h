@@ -44,6 +44,8 @@ private:
     static const gpio_num_t WAKEUP_GPIO = GPIO_NUM_5;
     static const gpio_num_t IN1_GPIO = GPIO_NUM_7;
     static const gpio_num_t BATTERYPIN_GPIO = GPIO_NUM_3;
+    static const adc1_channel_t batteryChannel = ADC1_CHANNEL_2;
+    static const adc_unit_t batteryAdcUnit = ADC_UNIT_1;
 
     // Components
     Motor motor;
@@ -57,15 +59,14 @@ private:
     unsigned long lastButtonActiveTime = 0;
     
     // loadCell
-    bool loadCellPresent;
+    bool loadCellPresent = false;
     unsigned long delayStartTime = 0;
     bool waitingAfterClick = false;
     const unsigned long delayAfterClick = 1000;
 
     // batteryMonitor
-    bool batteryMonitorPresent;
-    bool batteryWarning = false;
-    bool batteryCritical = false;
+    bool batteryMonitorPresent = false;
+    int batteryLevel;
 
     // Double click tracking
     bool pendingClickUp = false;
@@ -90,7 +91,7 @@ private:
 
     // Chimes
     void playBatteryLevelChime();
-    void playLowBatteryChime();
+    void playBatteryCriticalChime();
     void playStartupChime();
     void playDeepSleepChime();
     void printWakeupReason() const;

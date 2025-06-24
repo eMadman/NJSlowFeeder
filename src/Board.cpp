@@ -5,7 +5,7 @@
 Board::Board(float calibrationFactor)
     : motor(IN1MotorPin, IN2MotorPin),
     loadCell(HX_DOUT, HX_CLK, calibrationFactor),
-    battery(batteryPin),
+    battery(batteryChannel, batteryAdcUnit),
     buttonUp(buttonUpPin, BUTTON_PULLDOWN, true, 50),
 	buttonDown(buttonDownPin, BUTTON_PULLDOWN, true, 50) {}
 
@@ -29,12 +29,8 @@ void Board::setup() {
 
     if (isBatteryMonitorConnected()) {
         batteryMonitorPresent = true;
-        if (battery.isBatteryCritical()) {
-            batteryCritical = true;
-        }
-        else if (battery.isBatteryWarning()) {
-            batteryWarning = true;
-        }
+        battery.setup();
+        batteryLevel = battery.getBatteryLevel();
         Serial.println("Battery monitor detected");
     }
     else {
@@ -51,14 +47,14 @@ void Board::setup() {
     buttonDown.holdHandler(onHold, 1000);
 
     delay(1000);
-    if (batteryCritical || batteryWarning) {
-        playLowBatteryChime();
+    if (batteryMonitorPresent && (batteryLevel == BATTERY_CRITICAL)) {
+        playBatteryCriticalChime();
     }
     else {
         playStartupChime();
     }
 
-	// updateButtons();
+	// Refresh buttons
     buttonUp.process();
     buttonDown.process();
     buttonUp.buttonstatus = BUTTON_IDLE;
@@ -98,27 +94,16 @@ void Board::updateButtons() {
 }
 
 void Board::playBatteryLevelChime() {
-    int percentage = battery.getBatteryPercentage();
-
-    int chimeCount = 0;
-    if (percentage < 30) {
-        chimeCount = 1;
-    } 
-    else if (percentage <= 65) {
-        chimeCount = 2;
-    } 
-    else {
-        chimeCount = 3;
+    if (batteryLevel == BATTERY_CRITICAL) {
+        playBatteryCriticalChime();
     }
-    Serial.print("Battery level (%): ");
-    Serial.println(percentage);
-    for (int i = 0; i < chimeCount; ++i) {
+    for (int i = 0; i < batteryLevel; ++i) {
         motor.makeNoise(800, 300);
         delay(150);
     }
 }
 
-void Board::playLowBatteryChime() {
+void Board::playBatteryCriticalChime() {
     motor.makeNoise(1000, 150);
     motor.makeNoise(800, 150);
     motor.makeNoise(600, 200);
@@ -266,6 +251,15 @@ void Board::onHold(Button& button) {
 }
 
 void Board::handleButtonAction() {
+    if (batteryMonitorPresent && (batteryLevel == BATTERY_CRITICAL)) {
+        if(buttonUp.buttonstatus != BUTTON_IDLE || (buttonDown.buttonstatus != BUTTON_IDLE && buttonDown.buttonstatus != BUTTON_DOUBLE_CLICK)) {
+            playBatteryCriticalChime();  
+            buttonUp.buttonstatus = BUTTON_IDLE;
+            buttonDown.buttonstatus = BUTTON_IDLE;
+        }
+        return;
+    }
+
 	switch (buttonUp.buttonstatus) {
         case BUTTON_HOLD:  
             // Serial.print("Holding Up; Current Voltage: ");
@@ -359,7 +353,7 @@ void Board::processFeedingCycle() {
 	}
 	else {
 		if (motor.getVoltage() > 0) {
-            Serial.println("Voltage > 0");
+            // Serial.println("Voltage > 0");
 			lastMotorActiveTime = millis();
             if (loadCellPresent){
                 loadCell.update();
