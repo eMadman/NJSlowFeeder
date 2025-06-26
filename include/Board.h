@@ -5,8 +5,14 @@
 #include <Button.h>
 #include "LoadCell.h"
 #include "Motor.h"
+#include "Buzzer.h"
 #include "Battery.h"
 #include "driver/rtc_io.h"
+
+#define HAS_LOADCELL       true
+#define HAS_BATTERYMONITOR true
+#define HAS_BUZZER         true
+#define CALIBRATION_FACTOR 900.0f
 
 enum ButtonStatus {
     BUTTON_IDLE = 0,
@@ -17,17 +23,12 @@ enum ButtonStatus {
 
 class Board {
 public:
-    Board(float calibrationFactor);
+    Board();
     void setup();
     void updateButtons();
     bool shouldSleep();  
     void enterDeepSleep();
     
-    Motor& getMotor();
-    LoadCell& getLoadCell();
-    Button& getButtonUp();
-    Button& getButtonDown();
-
     void handleButtonAction();
     void processFeedingCycle();
 
@@ -40,32 +41,36 @@ private:
     static const int HX_DOUT = 9; //hx711, labeled as D10 on the silkscreen for xiao
     static const int HX_CLK = 8; //hx711, labeled as D9 on the silkscreen for xiao
     static const int batteryPin = A2; // ADC input from voltage divider
+    static const int buzzerPin = 4;
     static const gpio_num_t HX711CLK_GPIO = GPIO_NUM_8;
     static const gpio_num_t WAKEUP_GPIO = GPIO_NUM_5;
     static const gpio_num_t IN1_GPIO = GPIO_NUM_7;
     static const gpio_num_t BATTERYPIN_GPIO = GPIO_NUM_3;
+    static const gpio_num_t BUZZER_GPIO = GPIO_NUM_4;
     static const adc1_channel_t batteryChannel = ADC1_CHANNEL_2;
     static const adc_unit_t batteryAdcUnit = ADC_UNIT_1;
 
     // Components
     Motor motor;
+    Buzzer buzzer;
     LoadCell loadCell;
     Battery battery;
     Button buttonUp;
     Button buttonDown;
+    Speaker* speakerPtr = nullptr;
+
+    bool firstUpPress = true;
 
     // Timing tracking
     unsigned long lastMotorActiveTime = 0;
     unsigned long lastButtonActiveTime = 0;
     
     // loadCell
-    bool loadCellPresent = false;
     unsigned long delayStartTime = 0;
     bool waitingAfterClick = false;
     const unsigned long delayAfterClick = 1000;
 
     // batteryMonitor
-    bool batteryMonitorPresent = false;
     int batteryLevel;
 
     // Double click tracking
@@ -82,24 +87,21 @@ private:
     static void onRelease(Button& button);
     static void onHold(Button& button);
 
-    // Detect components
-    bool isBatteryMonitorConnected(int minValidAdc = 600);
-    bool isHX711Connected(unsigned long timeout = 1000);
-
     // Double click
     void handleDoubleClick(Button& button, bool& pendingClick, unsigned long& clickStartTime);
 
     // Chimes
-    void playBatteryLevelChime();
-    void playBatteryCriticalChime();
-    void playStartupChime();
-    void playDeepSleepChime();
+    void playBatteryLevelChime(Speaker* speaker);
+    void playBatteryCriticalChime(Speaker* speaker);
+    void playStartupChime(Speaker* speaker);
+    void playDeepSleepChime(Speaker* speaker);
     void printWakeupReason() const;
 
     bool shouldStopMotor();
+    void resetSystem();
     
     // Power saving
-    void configureRtcPin(gpio_num_t pin, rtc_gpio_mode_t mode = RTC_GPIO_MODE_INPUT_ONLY, bool enablePullup = false, bool enablePulldown = true);
+    void configureRtcPin(gpio_num_t pin, rtc_gpio_mode_t mode, bool enablePullup, bool enablePulldown);
 };
 
 #endif // BOARD_H

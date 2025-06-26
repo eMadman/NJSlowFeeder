@@ -2,13 +2,14 @@
 #define MOTOR_H
 
 #include <Arduino.h>
+#include "Speaker.h"
 
-class Motor {
+class Motor : public Speaker {
 public:
 	Motor(int in1Pin, int in2Pin);
 
     void setup();
-    void makeNoise(int frequency, int duration);
+    void makeSound(int frequency, int duration) override;
     float getVoltage() const;
     float getMinVoltage() const;
     float getMaxVoltage() const;

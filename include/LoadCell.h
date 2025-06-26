@@ -14,8 +14,8 @@ public:
 	void setup();
 	void update();               
 	void reset();
-	float getScaleWeight();
 	bool shouldStop();        
+	bool nonBlockingReadWeight();
 
 private:
 	HX711 scale;
@@ -24,7 +24,7 @@ private:
 	int DOUT, CLK;
 
 	// track if load cell started
-	bool started;
+	bool started = false;
 
 	// Weight tracking
 	float previousWeight = 0;
@@ -53,12 +53,16 @@ private:
 	float maxWeight;
 	bool weightFlag = false;
 	bool rateFlag = false;
-	static const int windowSize = 10;
+	static const int windowSize = 5;
 	int weightInd = 0;
 	array<float, windowSize> weightWindow;
 	int weightObsCnt = 0;
 
-	void startUp();
+	int numReadings = 10;
+	int cnt = 0;
+	float tallySum = 0.0f;
+	float avgWeight = 0.0f;
+	void startUp(unsigned long now);
 	// bool started() const;
 };
 

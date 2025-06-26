@@ -18,40 +18,55 @@ void LoadCell::reset() {
 	weightFlag = false, rateFlag = false;
 }
 
-float LoadCell::getScaleWeight() {
-	return scale.get_units();
-}
-
 void LoadCell::setup() {
 	scale.begin(DOUT, CLK);
 	scale.set_scale(calibrationFactor);
 }
 
-// bool LoadCell::started() const {
-// 	return startTime != 0;
-// }
+bool LoadCell::nonBlockingReadWeight() {
+	if (cnt++ < numReadings) {
+		tallySum += scale.get_units();
+		return false;
+	}
+	else {
+		avgWeight = tallySum / numReadings;
+		cnt = 0;
+		tallySum = 0.0f;
+		return true;
+	}
+}
 
-void LoadCell::startUp() {
+void LoadCell::startUp(unsigned long now) {
+	if (!nonBlockingReadWeight()) { return; }
+	// non blocking tare
+	scale.set_offset(avgWeight);
+	// non blocking average weight
+	previousWeight = avgWeight - scale.get_offset();
 	started = true;
-	scale.tare(10);
-	// startTime = millis();
 	lastRateUpdateTime = millis();
-	previousWeight = getScaleWeight();
+	// scale.tare(numReadings);
+	// previousWeight = scale.get_units(numReadings);
 }
 
 void LoadCell::update() {
-	// if (!started()){
+	unsigned long now = millis();
+
 	if (!started){
-		startUp();
+		startUp(now);
 		return;
 	}
-	else if (millis() - lastRateUpdateTime < sampleInterval) { 
+	else if (now - lastRateUpdateTime < sampleInterval) { 
 		return; 
 	}
+	
+	if (!nonBlockingReadWeight()) { return; }
 
-	float scaleReading = getScaleWeight();
-	float dw = abs(scaleReading - previousWeight);
-	float dt = (millis() - lastRateUpdateTime) / 1000.0;
+	// float scaleReading = scale.get_units(numReadings);
+	// float scaleReading = scale.get_units();
+	// float dw = abs(scaleReading - previousWeight);
+	float netWeight = avgWeight - scale.get_offset();
+	float dw = abs(netWeight - previousWeight);
+	float dt = (now - lastRateUpdateTime) / 1000.0;
 
 	float currRate = dw / dt;
 
@@ -59,7 +74,8 @@ void LoadCell::update() {
 	smoothedRate = alpha * currRate + (1 - alpha) * smoothedRate;
 
 	// Rolling window to track weights
-	weightWindow[weightInd++] = scaleReading;
+	// weightWindow[weightInd++] = scaleReading;
+	weightWindow[weightInd++] = netWeight;
 	weightInd = weightInd % windowSize;
 
 	if (weightObsCnt < windowSize) weightObsCnt++;
@@ -68,19 +84,20 @@ void LoadCell::update() {
 	minWeight = *minmax.first;
 	maxWeight = *minmax.second;
 
-	// for (size_t i = 0; i < weightWindow.size(); ++i) {
-	// 	Serial.print(weightWindow[i], 3); 
-	// 	if (i < weightWindow.size() - 1) Serial.print(" | ");
-	// }
-	// Serial.println();
-	// Serial.print("Weight diff: ");
-	// Serial.println(maxWeight - minWeight, 3);
-	// Serial.print("Smoothed Rate: "); 
-	// Serial.println(smoothedRate, 3); 
-	// Serial.println();
+	for (size_t i = 0; i < weightWindow.size(); ++i) {
+		Serial.print(weightWindow[i], 3); 
+		if (i < weightWindow.size() - 1) Serial.print(" | ");
+	}
+	Serial.println();
+	Serial.print("Weight diff: ");
+	Serial.println(maxWeight - minWeight, 3);
+	Serial.print("Smoothed Rate: "); 
+	Serial.println(smoothedRate, 3); 
+	Serial.println();
 
-	previousWeight = scaleReading;
-	lastRateUpdateTime = millis();
+	// previousWeight = scaleReading;
+	previousWeight = netWeight;
+	lastRateUpdateTime = now;
 }
 
 

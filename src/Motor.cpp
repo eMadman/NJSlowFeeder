@@ -68,7 +68,7 @@ float Motor::getVoltageStep() const {
     return motorVoltageStep;
 }
 
-void Motor::makeNoise(int frequency, int duration) {
+void Motor::makeSound(int frequency, int duration) {
 	// Serial.println("Making Noise");
 	analogWriteFrequency(frequency);
 	setVoltage(in1Pin, 0.3, true);
