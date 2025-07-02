@@ -13,10 +13,6 @@ void Motor::setup() {
 	reset();
 }
 
-bool Motor::started() const {
-	return motorStartTime != 0;
-}
-
 void Motor::reset() {
 	motorStartTime = 0;
 }

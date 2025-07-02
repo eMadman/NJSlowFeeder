@@ -36,7 +36,7 @@ bool LoadCell::nonBlockingReadWeight() {
 	}
 }
 
-void LoadCell::startUp(unsigned long now) {
+void LoadCell::start(unsigned long now) {
 	if (!nonBlockingReadWeight()) { return; }
 	// non blocking tare
 	scale.set_offset(avgWeight);
@@ -50,9 +50,8 @@ void LoadCell::startUp(unsigned long now) {
 
 void LoadCell::update() {
 	unsigned long now = millis();
-
 	if (!started){
-		startUp(now);
+		start(now);
 		return;
 	}
 	else if (now - lastRateUpdateTime < sampleInterval) { 

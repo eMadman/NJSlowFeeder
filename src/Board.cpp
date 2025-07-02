@@ -1,6 +1,5 @@
 #include "Board.h"
 #include <Arduino.h>
-// #include "driver/rtc_io.h"
 
 // Preserve motor speed after deep sleep
 RTC_DATA_ATTR float rtcMotorVoltage = -1.0f;
@@ -143,8 +142,6 @@ bool Board::shouldSleep() {
 
 void Board::configureRtcPin(gpio_num_t pin, rtc_gpio_mode_t mode, bool enablePullup, bool enablePulldown) {
     rtc_gpio_init(pin);
-    rtc_gpio_set_direction(pin, mode);
-
     if (enablePullup) {
         rtc_gpio_pullup_en(pin);
     } 
@@ -158,16 +155,16 @@ void Board::configureRtcPin(gpio_num_t pin, rtc_gpio_mode_t mode, bool enablePul
     else {
         rtc_gpio_pulldown_dis(pin);
     }
+    rtc_gpio_set_direction(pin, mode);
 }
 
 void Board::enterDeepSleep() {
     delay(500);
     playDeepSleepChime(speakerPtr);
 
-    if (HAS_LOADCELL){
+    if (HAS_LOADCELL) {
         // RTC hx711 CLK pin high power saving
         configureRtcPin(HX711CLK_GPIO, RTC_GPIO_MODE_OUTPUT_ONLY, true, false);
-
         pinMode(HX_CLK, OUTPUT);
         digitalWrite(HX_CLK, LOW);
         delayMicroseconds(1);
@@ -176,9 +173,22 @@ void Board::enterDeepSleep() {
         pinMode(HX_DOUT, INPUT);
     }
     
+    // Turn batteryPin to input
+    if (HAS_BATTERYMONITOR) {
+        configureRtcPin(BATTERYPIN_GPIO, RTC_GPIO_MODE_DISABLED, false, false);
+        pinMode(batteryPin, INPUT); 
+    }
+
+    if (HAS_BUZZER) {
+        configureRtcPin(BUZZER_GPIO, RTC_GPIO_MODE_DISABLED, false, false);
+        pinMode(buzzerPin, OUTPUT);
+        digitalWrite(buzzerPin, LOW);
+        delay(10);
+        pinMode(buzzerPin, INPUT); 
+    }
+
     // RTC motor pin power saving
     configureRtcPin(IN1_GPIO, RTC_GPIO_MODE_DISABLED, false, false);
-
     // Turn off motor pins
     pinMode(IN1MotorPin, OUTPUT);
     digitalWrite(IN1MotorPin, LOW);
@@ -190,22 +200,13 @@ void Board::enterDeepSleep() {
     delay(10);
     pinMode(IN2MotorPin, INPUT);
 
-    // Turn batteryPin to input
-    if (HAS_BATTERYMONITOR){
-        configureRtcPin(BATTERYPIN_GPIO, RTC_GPIO_MODE_DISABLED, false, false);
-        pinMode(batteryPin, INPUT);
-    }
-
-    if (HAS_BUZZER) {
-        configureRtcPin(BUZZER_GPIO, RTC_GPIO_MODE_DISABLED, false, false);
-        pinMode(buzzerPin, INPUT);
-    }
     // Put buttonDownPin to input with pullup to avoid floating
-    pinMode(buttonDownPin, INPUT_PULLUP);
+    configureRtcPin(BUTTON_DOWN_GPIO, RTC_GPIO_MODE_DISABLED, false, false);
+    pinMode(buttonDownPin, INPUT);
 
     // Wakeup config
-    configureRtcPin(WAKEUP_GPIO, RTC_GPIO_MODE_INPUT_ONLY, false, true);
-    esp_sleep_enable_ext0_wakeup(WAKEUP_GPIO, HIGH);
+    configureRtcPin(BUTTON_UP_GPIO, RTC_GPIO_MODE_INPUT_ONLY, false, true);
+    esp_sleep_enable_ext0_wakeup(BUTTON_UP_GPIO, HIGH);
 
     // Report
     Serial.print("System idle for (s): ");
@@ -213,7 +214,6 @@ void Board::enterDeepSleep() {
 
     Serial.println("Going to deep sleep");
     Serial.flush();
-    delay(50);
     esp_deep_sleep_start();
 }
 
@@ -254,6 +254,14 @@ void Board::onHold(Button& button) {
     button.buttonstatus = BUTTON_HOLD;
 }
 
+void Board::handleUpClick() {
+    if (HAS_LOADCELL) { loadCell.reset(); }
+    motor.setMotorStartTime();
+    delayStartTime = millis();
+    waitingAfterClick = true;
+    firstUpPress = false;
+}
+
 void Board::handleButtonAction() {
     if (HAS_BATTERYMONITOR && (batteryLevel == BATTERY_CRITICAL)) {
         if(buttonUp.buttonstatus != BUTTON_IDLE || (buttonDown.buttonstatus != BUTTON_IDLE && buttonDown.buttonstatus != BUTTON_DOUBLE_CLICK)) {
@@ -272,7 +280,6 @@ void Board::handleButtonAction() {
             lastButtonActiveTime = millis();
             if (motor.getVoltage() > 0) {
                 motor.setVoltage(IN1MotorPin, motor.getVoltage() + motor.getVoltageStep());
-                // rtcMotorVoltage = motor.getVoltage();
             }
             break;
 
@@ -282,27 +289,16 @@ void Board::handleButtonAction() {
             // buttonUp.buttonstatus = 0;
             // break;
             lastButtonActiveTime = millis();
-            if (!motor.started()) {
-                motor.setMotorStartTime();
-            }
-            // Serial.print("Read rtc: ");
-            // Serial.println(rtcMotorVoltage, 3);
             motor.setVoltage(IN1MotorPin, firstUpPress ? rtcMotorVoltage : motor.getMinVoltage());
-            delayStartTime = millis();
-            waitingAfterClick = true;
-			buttonUp.buttonstatus = BUTTON_IDLE;
-            firstUpPress = false;
+            handleUpClick();
+            buttonUp.buttonstatus = BUTTON_IDLE;
             break;
 
 		case BUTTON_DOUBLE_CLICK:
             lastButtonActiveTime = millis();
-            if (!motor.started()) {
-                motor.setMotorStartTime();
-            }
 			motor.setVoltage(IN1MotorPin, motor.getMaxVoltage(), true);
-            delayStartTime = millis();
-            waitingAfterClick = true;
-			buttonUp.buttonstatus = BUTTON_IDLE;
+            handleUpClick();
+            buttonUp.buttonstatus = BUTTON_IDLE;
 			break;
 
         default:
@@ -357,9 +353,7 @@ void Board::resetSystem() {
     // Serial.println(rtcMotorVoltage, 3);
     motor.setVoltage(IN1MotorPin, 0);
     motor.reset();
-    if (HAS_LOADCELL){
-        loadCell.reset();
-    }
+    if (HAS_LOADCELL){ loadCell.reset(); }
 }
 
 void Board::processFeedingCycle() {
