@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "Speaker.h"
+#include "driver/rtc_io.h"
 
 class Motor : public Speaker {
 public:

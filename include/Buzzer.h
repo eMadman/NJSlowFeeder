@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "Speaker.h"  // Base class
+#include "driver/rtc_io.h"
 
 class Buzzer : public Speaker {
 public:

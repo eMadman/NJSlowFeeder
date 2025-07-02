@@ -141,7 +141,6 @@ bool Board::shouldSleep() {
 }
 
 void Board::configureRtcPin(gpio_num_t pin, rtc_gpio_mode_t mode, bool enablePullup, bool enablePulldown) {
-    rtc_gpio_init(pin);
     if (enablePullup) {
         rtc_gpio_pullup_en(pin);
     } 
@@ -155,10 +154,13 @@ void Board::configureRtcPin(gpio_num_t pin, rtc_gpio_mode_t mode, bool enablePul
     else {
         rtc_gpio_pulldown_dis(pin);
     }
-    rtc_gpio_set_direction(pin, mode);
+    if (mode != RTC_GPIO_MODE_DISABLED) {
+        rtc_gpio_set_direction(pin, mode);
+    }
 }
 
 void Board::enterDeepSleep() {
+    resetSystem();
     delay(500);
     playDeepSleepChime(speakerPtr);
 
@@ -175,21 +177,23 @@ void Board::enterDeepSleep() {
     
     // Turn batteryPin to input
     if (HAS_BATTERYMONITOR) {
-        configureRtcPin(BATTERYPIN_GPIO, RTC_GPIO_MODE_DISABLED, false, false);
         pinMode(batteryPin, INPUT); 
+        if (rtc_gpio_is_valid_gpio(BATTERYPIN_GPIO)) {
+            rtc_gpio_isolate(BATTERYPIN_GPIO);
+        }
     }
 
     if (HAS_BUZZER) {
-        configureRtcPin(BUZZER_GPIO, RTC_GPIO_MODE_DISABLED, false, false);
         pinMode(buzzerPin, OUTPUT);
         digitalWrite(buzzerPin, LOW);
         delay(10);
         pinMode(buzzerPin, INPUT); 
+        if (rtc_gpio_is_valid_gpio(BUZZER_GPIO)) {
+            rtc_gpio_isolate(BUZZER_GPIO);
+        }
     }
 
     // RTC motor pin power saving
-    configureRtcPin(IN1_GPIO, RTC_GPIO_MODE_DISABLED, false, false);
-    // Turn off motor pins
     pinMode(IN1MotorPin, OUTPUT);
     digitalWrite(IN1MotorPin, LOW);
     delay(10);
@@ -199,10 +203,16 @@ void Board::enterDeepSleep() {
     digitalWrite(IN2MotorPin, LOW);
     delay(10);
     pinMode(IN2MotorPin, INPUT);
+    if (rtc_gpio_is_valid_gpio(IN2_GPIO)) {
+        rtc_gpio_isolate(IN2_GPIO);
+    }
 
     // Put buttonDownPin to input with pullup to avoid floating
-    configureRtcPin(BUTTON_DOWN_GPIO, RTC_GPIO_MODE_DISABLED, false, false);
+    // configureRtcPin(BUTTON_DOWN_GPIO, RTC_GPIO_MODE_DISABLED, false, false);
     pinMode(buttonDownPin, INPUT);
+    if (rtc_gpio_is_valid_gpio(BUTTON_DOWN_GPIO)) {
+        rtc_gpio_isolate(BUTTON_DOWN_GPIO);
+    }
 
     // Wakeup config
     configureRtcPin(BUTTON_UP_GPIO, RTC_GPIO_MODE_INPUT_ONLY, false, true);

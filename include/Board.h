@@ -42,7 +42,7 @@ private:
     static const int batteryPin                = A2; // ADC input from voltage divider
     static const int buzzerPin                 = 4;
     static const gpio_num_t HX711CLK_GPIO      = GPIO_NUM_8;
-    static const gpio_num_t IN1_GPIO           = GPIO_NUM_7;
+    static const gpio_num_t IN2_GPIO           = GPIO_NUM_7;
     static const gpio_num_t BUTTON_UP_GPIO     = GPIO_NUM_5;
     static const gpio_num_t BUTTON_DOWN_GPIO   = GPIO_NUM_6;
     static const gpio_num_t BATTERYPIN_GPIO    = GPIO_NUM_3;
@@ -102,7 +102,10 @@ private:
     void resetSystem();
     
     // Power saving
-    void configureRtcPin(gpio_num_t pin, rtc_gpio_mode_t mode, bool enablePullup, bool enablePulldown);
+    void configureRtcPin(gpio_num_t pin, 
+                        rtc_gpio_mode_t mode=RTC_GPIO_MODE_DISABLED, 
+                        bool enablePullup=false, 
+                        bool enablePulldown=false);
 };
 
 #endif // BOARD_H

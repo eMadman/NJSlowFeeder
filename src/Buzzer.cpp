@@ -4,6 +4,7 @@ Buzzer::Buzzer(int pin, int channel)
     : buzzerPin(pin), buzzerChannel(channel) {}
 
 void Buzzer::setup() {
+    rtc_gpio_hold_dis((gpio_num_t)buzzerPin);  
     ledcAttachPin(buzzerPin, buzzerChannel);
     ledcSetup(buzzerChannel, 2000, 8); // 2kHz default, 8-bit resolution
 }
