@@ -4,7 +4,10 @@ Motor::Motor(int in1Pin, int in2Pin)
     : in1Pin(in1Pin), in2Pin(in2Pin) {}
 
 void Motor::setup() {
-	rtc_gpio_hold_dis((gpio_num_t) in2Pin);  
+	gpio_num_t in2_gpio = static_cast<gpio_num_t>(in2Pin);
+	if (rtc_gpio_is_valid_gpio(in2_gpio)) {
+		rtc_gpio_hold_dis(in2_gpio);  
+	}
 	pinMode(in1Pin, OUTPUT);
     pinMode(in2Pin, OUTPUT);
     analogWriteFrequency(motorPWMFrequency);
