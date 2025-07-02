@@ -12,12 +12,12 @@
 #define HAS_LOADCELL       true
 #define HAS_BATTERYMONITOR true
 #define HAS_BUZZER         true
-#define CALIBRATION_FACTOR 900.0f
+#define CALIBRATION_FACTOR 1200.0f
 
 enum ButtonStatus {
-    BUTTON_IDLE = 0,
-    BUTTON_HOLD = 1,
-    BUTTON_CLICK = 2,
+    BUTTON_IDLE         = 0,
+    BUTTON_HOLD         = 1,
+    BUTTON_CLICK        = 2,
     BUTTON_DOUBLE_CLICK = 3,
 };
 
@@ -28,27 +28,27 @@ public:
     void updateButtons();
     bool shouldSleep();  
     void enterDeepSleep();
-    
     void handleButtonAction();
     void processFeedingCycle();
 
 private:
     // GPIO Pins
-    static const int IN1MotorPin = 44; //change to 44 if motor runs in reverse
-    static const int IN2MotorPin = 7; //change to 7 if motor runs in reverse
-    static const int buttonUpPin = 5; //labeled as D4 on the silkscreen for xiao
-    static const int buttonDownPin = 6; //labeled as D5 on the slikscreen for xiao
-    static const int HX_DOUT = 9; //hx711, labeled as D10 on the silkscreen for xiao
-    static const int HX_CLK = 8; //hx711, labeled as D9 on the silkscreen for xiao
-    static const int batteryPin = A2; // ADC input from voltage divider
-    static const int buzzerPin = 4;
-    static const gpio_num_t HX711CLK_GPIO = GPIO_NUM_8;
-    static const gpio_num_t WAKEUP_GPIO = GPIO_NUM_5;
-    static const gpio_num_t IN1_GPIO = GPIO_NUM_7;
-    static const gpio_num_t BATTERYPIN_GPIO = GPIO_NUM_3;
-    static const gpio_num_t BUZZER_GPIO = GPIO_NUM_4;
+    static const int IN1MotorPin               = 44; //change to 44 if motor runs in reverse
+    static const int IN2MotorPin               = 7; //change to 7 if motor runs in reverse
+    static const int buttonUpPin               = 5; //labeled as D4 on the silkscreen for xiao
+    static const int buttonDownPin             = 6; //labeled as D5 on the slikscreen for xiao
+    static const int HX_DOUT                   = 9; //hx711, labeled as D10 on the silkscreen for xiao
+    static const int HX_CLK                    = 8; //hx711, labeled as D9 on the silkscreen for xiao
+    static const int batteryPin                = A2; // ADC input from voltage divider
+    static const int buzzerPin                 = 4;
+    static const gpio_num_t HX711CLK_GPIO      = GPIO_NUM_8;
+    static const gpio_num_t IN1_GPIO           = GPIO_NUM_7;
+    static const gpio_num_t BUTTON_UP_GPIO     = GPIO_NUM_5;
+    static const gpio_num_t BUTTON_DOWN_GPIO   = GPIO_NUM_6;
+    static const gpio_num_t BATTERYPIN_GPIO    = GPIO_NUM_3;
+    static const gpio_num_t BUZZER_GPIO        = GPIO_NUM_4;
     static const adc1_channel_t batteryChannel = ADC1_CHANNEL_2;
-    static const adc_unit_t batteryAdcUnit = ADC_UNIT_1;
+    static const adc_unit_t batteryAdcUnit     = ADC_UNIT_1;
 
     // Components
     Motor motor;
@@ -87,7 +87,8 @@ private:
     static void onRelease(Button& button);
     static void onHold(Button& button);
 
-    // Double click
+    // Buttons
+    void handleUpClick();
     void handleDoubleClick(Button& button, bool& pendingClick, unsigned long& clickStartTime);
 
     // Chimes

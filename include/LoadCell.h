@@ -62,7 +62,7 @@ private:
 	int cnt = 0;
 	float tallySum = 0.0f;
 	float avgWeight = 0.0f;
-	void startUp(unsigned long now);
+	void start(unsigned long now);
 	// bool started() const;
 };
 
