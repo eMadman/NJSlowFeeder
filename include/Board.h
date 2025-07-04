@@ -106,6 +106,8 @@ private:
                         rtc_gpio_mode_t mode=RTC_GPIO_MODE_DISABLED, 
                         bool enablePullup=false, 
                         bool enablePulldown=false);
+    
+    void isolateRtcPin(gpio_num_t pin);
 };
 
 #endif // BOARD_H

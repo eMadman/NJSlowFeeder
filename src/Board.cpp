@@ -8,14 +8,16 @@ Board::Board()
     : motor(IN1MotorPin, IN2MotorPin),
     buzzer(buzzerPin),
     loadCell(HX_DOUT, HX_CLK, CALIBRATION_FACTOR),
-    battery(batteryChannel, batteryAdcUnit),
+    battery(BATTERYPIN_GPIO, batteryChannel, batteryAdcUnit),
     buttonUp(buttonUpPin, BUTTON_PULLDOWN, true, 50),
 	buttonDown(buttonDownPin, BUTTON_PULLDOWN, true, 50) {}
 
 void Board::setup() {
     Serial.begin(115200);
-    delay(2500);
+    delay(1000);
+
     Serial.println("Starting up...");
+    printWakeupReason();
 
     motor.setup();
     Serial.println("Setting up motor");
@@ -24,10 +26,10 @@ void Board::setup() {
 
     if (HAS_LOADCELL) {
         loadCell.setup();
-        Serial.println("Setting up loadCell");
+        Serial.println("Load cell detected");
     }
     else {
-        Serial.println("Load Cell not detected");
+        Serial.println("Load cell not detected");
     }
 
     if (HAS_BATTERYMONITOR) {
@@ -39,23 +41,16 @@ void Board::setup() {
         Serial.println("Battery monitor not detected");
     }
 
-    if(HAS_BUZZER) {
+    if (HAS_BUZZER) {
         buzzer.setup();
         speakerPtr = &buzzer;
+        Serial.println("Buzzer detected");
     }
     else {
         speakerPtr = &motor;
+        Serial.println("Buzzer not detected");
     }
 
-    printWakeupReason();
-
-    buttonUp.releaseHandler(onRelease);
-    buttonUp.holdHandler(onHold, 1000);
-
-    buttonDown.releaseHandler(onRelease);
-    buttonDown.holdHandler(onHold, 1000);
-
-    delay(1000);
     if (HAS_BATTERYMONITOR && (batteryLevel == BATTERY_CRITICAL)) {
         playBatteryCriticalChime(speakerPtr);
     }
@@ -64,6 +59,14 @@ void Board::setup() {
     }
 
 	// Refresh buttons
+	rtc_gpio_hold_dis(BUTTON_DOWN_GPIO);  
+
+    buttonUp.releaseHandler(onRelease);
+    buttonUp.holdHandler(onHold, 1000);
+
+    buttonDown.releaseHandler(onRelease);
+    buttonDown.holdHandler(onHold, 1000);
+
     buttonUp.process();
     buttonDown.process();
     buttonUp.buttonstatus = BUTTON_IDLE;
@@ -140,23 +143,26 @@ bool Board::shouldSleep() {
 	return timeout || buttonDown.buttonstatus == BUTTON_DOUBLE_CLICK;
 }
 
+void Board::isolateRtcPin(gpio_num_t pin) {
+    rtc_gpio_init(pin);
+    rtc_gpio_isolate(pin);
+}
+
 void Board::configureRtcPin(gpio_num_t pin, rtc_gpio_mode_t mode, bool enablePullup, bool enablePulldown) {
+    rtc_gpio_init(pin);
     if (enablePullup) {
         rtc_gpio_pullup_en(pin);
     } 
     else {
         rtc_gpio_pullup_dis(pin);
     }
-
     if (enablePulldown) {
         rtc_gpio_pulldown_en(pin);
     } 
     else {
         rtc_gpio_pulldown_dis(pin);
     }
-    if (mode != RTC_GPIO_MODE_DISABLED) {
-        rtc_gpio_set_direction(pin, mode);
-    }
+    rtc_gpio_set_direction(pin, mode);
 }
 
 void Board::enterDeepSleep() {
@@ -164,8 +170,8 @@ void Board::enterDeepSleep() {
     delay(500);
     playDeepSleepChime(speakerPtr);
 
+    // hx711 load cell
     if (HAS_LOADCELL) {
-        // RTC hx711 CLK pin high power saving
         configureRtcPin(HX711CLK_GPIO, RTC_GPIO_MODE_OUTPUT_ONLY, true, false);
         pinMode(HX_CLK, OUTPUT);
         digitalWrite(HX_CLK, LOW);
@@ -175,44 +181,40 @@ void Board::enterDeepSleep() {
         pinMode(HX_DOUT, INPUT);
     }
     
-    // Turn batteryPin to input
+    // Battery
     if (HAS_BATTERYMONITOR) {
+        // configureRtcPin(IN2_GPIO, RTC_GPIO_MODE_DISABLED, false, false);
         pinMode(batteryPin, INPUT); 
-        if (rtc_gpio_is_valid_gpio(BATTERYPIN_GPIO)) {
-            rtc_gpio_isolate(BATTERYPIN_GPIO);
-        }
+        isolateRtcPin(BATTERYPIN_GPIO);
     }
 
+    // Buzzer
     if (HAS_BUZZER) {
+        // configureRtcPin(IN2_GPIO, RTC_GPIO_MODE_DISABLED, false, false);
         pinMode(buzzerPin, OUTPUT);
         digitalWrite(buzzerPin, LOW);
         delay(10);
         pinMode(buzzerPin, INPUT); 
-        if (rtc_gpio_is_valid_gpio(BUZZER_GPIO)) {
-            rtc_gpio_isolate(BUZZER_GPIO);
-        }
+        isolateRtcPin(BUZZER_GPIO);
     }
 
-    // RTC motor pin power saving
+    // Motor driver
     pinMode(IN1MotorPin, OUTPUT);
     digitalWrite(IN1MotorPin, LOW);
     delay(10);
     pinMode(IN1MotorPin, INPUT);
 
+    // configureRtcPin(IN2_GPIO, RTC_GPIO_MODE_DISABLED, false, false);
     pinMode(IN2MotorPin, OUTPUT);
     digitalWrite(IN2MotorPin, LOW);
     delay(10);
     pinMode(IN2MotorPin, INPUT);
-    if (rtc_gpio_is_valid_gpio(IN2_GPIO)) {
-        rtc_gpio_isolate(IN2_GPIO);
-    }
+    isolateRtcPin(IN2_GPIO);
 
-    // Put buttonDownPin to input with pullup to avoid floating
+    // Button Down
     // configureRtcPin(BUTTON_DOWN_GPIO, RTC_GPIO_MODE_DISABLED, false, false);
     pinMode(buttonDownPin, INPUT);
-    if (rtc_gpio_is_valid_gpio(BUTTON_DOWN_GPIO)) {
-        rtc_gpio_isolate(BUTTON_DOWN_GPIO);
-    }
+    isolateRtcPin(BUTTON_DOWN_GPIO);
 
     // Wakeup config
     configureRtcPin(BUTTON_UP_GPIO, RTC_GPIO_MODE_INPUT_ONLY, false, true);
@@ -240,27 +242,20 @@ void Board::printWakeupReason() const {
 }
 
 void Board::onRelease(Button& button) {
-    // Serial.print("onRelease: ");
-    // Serial.println(button.pin);
 	switch (button.buttonstatus)
 	{
 		case BUTTON_IDLE:
-			// Serial.print("Click: ");
-			// Serial.println(b.pin);
 			button.buttonstatus = BUTTON_CLICK;
 			break;
 		case BUTTON_HOLD:
-			// Serial.print("HoldRelease: ");
-			// Serial.println(b.pin);
 			button.buttonstatus = BUTTON_IDLE;
+            break;
 		default:
 			break;
     } 	
 }
 
 void Board::onHold(Button& button) {
-    // Serial.print("onHold: ");
-    // Serial.println(button.pin);
     button.buttonstatus = BUTTON_HOLD;
 }
 
@@ -334,7 +329,7 @@ void Board::handleButtonAction() {
                 resetSystem();
             }
             else if (HAS_BATTERYMONITOR) {
-                battery.getBatteryPercentage();
+                batteryLevel = battery.getBatteryLevel();
                 playBatteryLevelChime(speakerPtr);
             }
             buttonDown.buttonstatus = BUTTON_IDLE;
