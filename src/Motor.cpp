@@ -9,12 +9,11 @@ void Motor::setup() {
     pinMode(in2Pin, OUTPUT);
     analogWriteFrequency(motorPWMFrequency);
     analogWrite(in2Pin, 0);
-	setVoltage(in1Pin, 0);  
-    motorVoltage = 0; 
 	reset();
 }
 
 void Motor::reset() {
+	setVoltage(in1Pin, 0, true);
 	motorStartTime = 0;
 }
 

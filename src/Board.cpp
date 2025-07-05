@@ -166,7 +166,7 @@ void Board::configureRtcPin(gpio_num_t pin, rtc_gpio_mode_t mode, bool enablePul
 }
 
 void Board::enterDeepSleep() {
-    resetSystem();
+    if (motor.getVoltage() != 0) { resetSystem(); }
     delay(500);
     playDeepSleepChime(speakerPtr);
 
@@ -294,7 +294,7 @@ void Board::handleButtonAction() {
             // buttonUp.buttonstatus = 0;
             // break;
             lastButtonActiveTime = millis();
-            motor.setVoltage(IN1MotorPin, firstUpPress ? rtcMotorVoltage : motor.getMinVoltage());
+            motor.setVoltage(IN1MotorPin, firstUpPress ? rtcMotorVoltage : motor.getMinVoltage(), true);
             handleUpClick();
             buttonUp.buttonstatus = BUTTON_IDLE;
             break;
@@ -356,7 +356,6 @@ void Board::resetSystem() {
     rtcMotorVoltage = motor.getVoltage();
     // Serial.print("Saved rtc: ");
     // Serial.println(rtcMotorVoltage, 3);
-    motor.setVoltage(IN1MotorPin, 0);
     motor.reset();
     if (HAS_LOADCELL){ loadCell.reset(); }
 }
