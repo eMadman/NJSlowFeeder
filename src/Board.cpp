@@ -284,7 +284,7 @@ void Board::handleButtonAction() {
             // Serial.println(constrain(currVoltage + motor.getVoltageStep(), 0, motor.getBusVoltage()), 2);
             lastButtonActiveTime = millis();
             if (motor.getVoltage() > 0) {
-                motor.setVoltage(IN1MotorPin, motor.getVoltage() + motor.getVoltageStep());
+                motor.setVoltage(motor.getVoltage() + motor.getVoltageStep());
             }
             break;
 
@@ -294,14 +294,14 @@ void Board::handleButtonAction() {
             // buttonUp.buttonstatus = 0;
             // break;
             lastButtonActiveTime = millis();
-            motor.setVoltage(IN1MotorPin, firstUpPress ? rtcMotorVoltage : motor.getMinVoltage(), true);
+            motor.setVoltage(firstUpPress ? rtcMotorVoltage : motor.getMinVoltage(), true);
             handleUpClick();
             buttonUp.buttonstatus = BUTTON_IDLE;
             break;
 
 		case BUTTON_DOUBLE_CLICK:
             lastButtonActiveTime = millis();
-			motor.setVoltage(IN1MotorPin, motor.getMaxVoltage(), true);
+			motor.setVoltage(motor.getMaxVoltage(), true);
             handleUpClick();
             buttonUp.buttonstatus = BUTTON_IDLE;
 			break;
@@ -315,11 +315,9 @@ void Board::handleButtonAction() {
         case BUTTON_HOLD:  
             lastButtonActiveTime = millis();
             if (motor.getVoltage() > 0) {
-                // ensure motor doesn't stop when holding down button
                 float newVoltage = motor.getVoltage() - motor.getVoltageStep();
-                newVoltage = max(newVoltage, motor.getMinVoltage());
-                motor.setVoltage(IN1MotorPin, newVoltage);
-                // rtcMotorVoltage = motor.getVoltage();
+                // ensure motor doesn't stop when holding down button
+                motor.setVoltage(max(newVoltage, motor.getMinVoltage()));
             }
             break;
 

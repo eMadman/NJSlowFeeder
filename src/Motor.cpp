@@ -1,19 +1,19 @@
 #include "Motor.h"
 
-Motor::Motor(int in1Pin, int in2Pin)
-    : in1Pin(in1Pin), in2Pin(in2Pin) {}
+Motor::Motor(int pwmPin, int directionPin)
+    : pwmPin(pwmPin), directionPin(directionPin) {}
 
 void Motor::setup() {
-	rtc_gpio_hold_dis((gpio_num_t)in2Pin);  
-	pinMode(in1Pin, OUTPUT);
-    pinMode(in2Pin, OUTPUT);
+	rtc_gpio_hold_dis((gpio_num_t)directionPin);  
+	pinMode(pwmPin, OUTPUT);
+    pinMode(directionPin, OUTPUT);
     analogWriteFrequency(motorPWMFrequency);
-    analogWrite(in2Pin, 0);
+    analogWrite(directionPin, 0);
 	reset();
 }
 
 void Motor::reset() {
-	setVoltage(in1Pin, 0, true);
+	setVoltage(0, true);
 	motorStartTime = 0;
 }
 
@@ -33,7 +33,7 @@ bool Motor::shouldStop() const {
 	return false;
 }
 
-void Motor::setVoltage(int driverPin, float newVoltage, bool forceSet) {
+void Motor::setVoltage(float newVoltage, bool forceSet) {
 	if (!forceSet && lastMotorUpdate == 0) {
 		lastMotorUpdate = millis();
 		return;
@@ -43,7 +43,7 @@ void Motor::setVoltage(int driverPin, float newVoltage, bool forceSet) {
 	}
 	newVoltage = constrain(newVoltage, 0, motorMaxVoltage);
 	int setpoint = (int)((newVoltage / motorMaxVoltage) * 255);
-	analogWrite(driverPin, setpoint);
+	analogWrite(pwmPin, setpoint);
 	motorVoltage = newVoltage;
 	lastMotorUpdate = millis();
 }
@@ -67,8 +67,8 @@ float Motor::getVoltageStep() const {
 void Motor::makeSound(int frequency, int duration) {
 	// Serial.println("Making Noise");
 	analogWriteFrequency(frequency);
-	setVoltage(in1Pin, 0.3, true);
+	setVoltage(0.3, true);
 	delay(duration);
-	setVoltage(in1Pin, 0, true);
+	setVoltage(0, true);
 	analogWriteFrequency(motorPWMFrequency);
 }

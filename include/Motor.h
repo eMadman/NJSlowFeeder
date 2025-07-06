@@ -7,22 +7,22 @@
 
 class Motor : public Speaker {
 public:
-	Motor(int in1Pin, int in2Pin);
+	Motor(int pwmPin, int directionPin);
 
     void setup();
+    void reset();
     void makeSound(int frequency, int duration) override;
     float getVoltage() const;
     float getMinVoltage() const;
     float getMaxVoltage() const;
     float getVoltageStep() const;
-    void setVoltage(int driverPin, float newVoltage, bool forceSet=false);
-    void reset();
+    void setVoltage(float newVoltage, bool forceSet=false);
     void setMotorStartTime();
     bool shouldStop() const;
 
 private:
-    int in1Pin;
-    int in2Pin;
+    int pwmPin;
+    int directionPin;
 
 	unsigned long minMotorRunTime = 3000; 
 	const unsigned long maxMotorRunTime = 60000;
