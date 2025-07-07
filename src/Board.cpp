@@ -1,9 +1,6 @@
 #include "Board.h"
 #include <Arduino.h>
 
-// Preserve motor speed after deep sleep
-RTC_DATA_ATTR float rtcMotorVoltage = -1.0f;
-
 Board::Board()
     : motor(IN1MotorPin, IN2MotorPin),
     buzzer(buzzerPin),
@@ -14,7 +11,7 @@ Board::Board()
 
 void Board::setup() {
     Serial.begin(115200);
-    delay(1000);
+    delay(1500);
 
     Serial.println("Starting up...");
     printWakeupReason();
@@ -32,15 +29,6 @@ void Board::setup() {
         Serial.println("Load cell not detected");
     }
 
-    if (HAS_BATTERYMONITOR) {
-        battery.setup();
-        batteryLevel = battery.getBatteryLevel();
-        Serial.println("Battery monitor detected");
-    }
-    else {
-        Serial.println("Battery monitor not detected");
-    }
-
     if (HAS_BUZZER) {
         buzzer.setup();
         speakerPtr = &buzzer;
@@ -50,12 +38,14 @@ void Board::setup() {
         speakerPtr = &motor;
         Serial.println("Buzzer not detected");
     }
-
-    if (HAS_BATTERYMONITOR && (batteryLevel == BATTERY_CRITICAL)) {
-        playBatteryCriticalChime(speakerPtr);
+    
+    if (HAS_BATTERYMONITOR) {
+        battery.setup();
+        batteryLevel = battery.getBatteryLevel();
+        Serial.println("Battery monitor detected");
     }
     else {
-        playStartupChime(speakerPtr);
+        Serial.println("Battery monitor not detected");
     }
 
 	// Refresh buttons
@@ -71,6 +61,13 @@ void Board::setup() {
     buttonDown.process();
     buttonUp.buttonstatus = BUTTON_IDLE;
     buttonDown.buttonstatus = BUTTON_IDLE;
+
+    if (HAS_BATTERYMONITOR && (batteryLevel == BATTERY_CRITICAL)) {
+        playBatteryCriticalChime(speakerPtr);
+    }
+    else {
+        playStartupChime(speakerPtr);
+    }
 }
 
 void Board::handleDoubleClick(Button& button, bool& pendingClick, unsigned long& clickStartTime) {

@@ -33,13 +33,23 @@ private:
     const float voltageDividerRatio = (R1 + R2) / R2; 
 
     const int numReading = 10;                  // num readings to average for a accurate measurement
+    const int numCalibrations = 10;             // num of times to sample voltage to calibrate voltage limits
 
     const int batteryModerateThreshold = 70;    // percentage 
     const int batteryWarningThreshold = 30;     // percentage
     const int batteryCriticalThreshold = 7;     // percentage
 
-    float getBatteryPercentage() const;         // returns 0 - 100%
-    float readBatteryVoltage() const;           // returns voltage in V
+    const float voltageCalibOffset = 0.1f;
+    const float voltageCalibEpsilon = 0.01f;
+    const float learningRate = 0.3f;
+
+    int getBatteryPercentage() const;           // returns 0 - 100%
+    float readRawVoltage() const;               // returns voltage in V
+    float getStableVoltage() const;             // returns voltage in V
+    void maybeUpdateFullVoltage(float voltage);
+    void maybeUpdateEmptyVoltage(float voltage);
+    void calibrateVoltageLimits();
+    float voltageToPercentage(float voltage) const;
 };
 
 #endif

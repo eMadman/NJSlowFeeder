@@ -5,6 +5,8 @@
 #include "Speaker.h"
 #include "driver/rtc_io.h"
 
+extern RTC_DATA_ATTR float rtcMotorVoltage;
+
 class Motor : public Speaker {
 public:
 	Motor(int pwmPin, int directionPin);

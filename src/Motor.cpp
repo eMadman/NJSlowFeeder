@@ -1,4 +1,6 @@
 #include "Motor.h"
+// Preserve motor speed after deep sleep
+RTC_DATA_ATTR float rtcMotorVoltage = -1.0f;
 
 Motor::Motor(int pwmPin, int directionPin)
     : pwmPin(pwmPin), directionPin(directionPin) {}
