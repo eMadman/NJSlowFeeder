@@ -3,13 +3,13 @@
 This is a slowfeeder for feeding coffee beans into a grinder. It is designed to be 3D printed and assembled with basic mechanical and electrical tools (hex driver, soldering iron, wire strippers).
 
 ## Updates:
-V1.2 is out. See Issues for additional adaptors or to request additional functionality.\
+2025.07.07 - v1.2.1 - OOP code with additional features added by eatfish - Big Props!
 Development is actively occuring, the main discussion channel is on the Gaggiuino Discord. 
 
 ## V1.2
 V1.2 introduces a microcontroller (with BLE/Wifi), PWM motor controller, and load cell compatiblity while maintaining the great battery life of V1.1.\
 V1.2 CAD is stable. See Issues to request new adaptors or other features.\
-V1.2 Code is very much a proof of concept, and under development.\
+V1.2.1 Code is stable, development is occuring on web-ui/ble features.
 BOM at [this link](https://docs.google.com/spreadsheets/d/11zUR7dkBkgdKcGbynbE2zPVb8PsdSGaQEwi6_OAgMBY/edit?usp=sharing).
 ### Demo Video
 [![SlowFeeder V1.2 Demo](https://img.youtube.com/vi/54PZubX1fOw/0.jpg)](https://www.youtube.com/watch?v=54PZubX1fOw)
@@ -18,7 +18,7 @@ BOM at [this link](https://docs.google.com/spreadsheets/d/11zUR7dkBkgdKcGbynbE2z
 1. Variable speed control (hold up/down once wheel is turning)
 2. On/Off control of wheel
 3. Loadcell reading and setup taring (basic)
-4. Deepsleep (works, but currently higher draw than expected with the HX711 for some reason)
+4. Deepsleep
 
 ### Planned Functions:
 - [ ] WebUI for parameter control
@@ -30,9 +30,10 @@ BOM at [this link](https://docs.google.com/spreadsheets/d/11zUR7dkBkgdKcGbynbE2z
 3. Open the NJSlowfeeder.code-workspace file
    - This should install all required dependencies
 4. Open folder in Platformio extension (if not already selected)
-5. Choose the MCU you have in the Platformio Project Tasks section, plug MCU into computer, click upload
-   - If this fails, try holding the boot button as you plug the MCU into the computer
-6. Done
+5. Set build flags in src/board.h depending on what optional features you've added
+6. Choose the MCU you have in the Platformio Project Tasks section, plug MCU into computer, click upload (if MCU has already been flashed and is in deep-sleep, wake it by clicking up button before plugging in)
+   - If this fails, hold the boot button and then click the reset button while the MCU is powered (battery or usb)
+7. Done
 
 ## V1.1 
 V1.1 uses a fully analog approach to slowfeeding and does not include a microcontroller.\
