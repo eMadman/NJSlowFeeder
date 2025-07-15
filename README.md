@@ -35,6 +35,22 @@ BOM at [this link](https://docs.google.com/spreadsheets/d/11zUR7dkBkgdKcGbynbE2z
 - [ ] WebUI for parameter control
 - [ ] PoopCode :tm: - Precise single dosing of beans (for filling vials or grinding)
 
+### Getting Started with V1.2 Lego Build
+1. Review V1.2 BOM
+2. Decide what optional features you want to integrate
+   - Load Cell (stop on weight. No power budget impact)
+   - Buzzer (Louder tones instead of motor driven tones, minor power budget impact)
+   - Battery Voltage Monitor (Voltage divider method, minor power budget impact)
+4. Open CAD_Models folder and determine CAD files needed to build your slow feeder
+   - Xiao or Supermini body
+   - Door
+   - Grinder adaptor (in folder structure per grinder)
+   - Feeder wheel (8 hole default, other hole counts in folder)
+   - Load Cell Ring (if adding load cell)
+5. Use 3DPrinting orientation image to arrange your prints as shown
+6. Use Xiao Wiring Diagram to determine how to wire your slowfeeder
+7. Assemble everything in place with screws. (Assembly video coming soon)
+
 ### Getting Started with V1.2 Code
 1. Install VSCode
 2. Clone this repo
