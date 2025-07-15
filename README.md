@@ -23,8 +23,6 @@ BOM at [this link](https://docs.google.com/spreadsheets/d/11zUR7dkBkgdKcGbynbE2z
 - Double-click Up → Jump to max speed
 - Double-click Down → Manually enter deep sleep
 
-Auto Deep Sleep: Device will enter deep sleep automatically after 30s of motor or button idling
-RTC memory support: Saves last-used motor speed across sleep cycles
 
 ### Working Functions:
 1. Variable speed control (hold up/down once wheel is turning)
