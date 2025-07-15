@@ -14,11 +14,24 @@ BOM at [this link](https://docs.google.com/spreadsheets/d/11zUR7dkBkgdKcGbynbE2z
 ### Demo Video
 [![SlowFeeder V1.2 Demo](https://img.youtube.com/vi/54PZubX1fOw/0.jpg)](https://www.youtube.com/watch?v=54PZubX1fOw)
 
+### User Interface:
+- Hold Up/Down → Gradually increase/decrease motor speed
+- Single-click Up → Start motor or reset to minimum speed
+- Single-click Down
+   - While motor spinning → Stop motor
+   - While idling, [IF Battery Monitor] → Indicate battery level (more beeps = higher battery)
+- Double-click Up → Jump to max speed
+- Double-click Down → Manually enter deep sleep
+
+Auto Deep Sleep: Device will enter deep sleep automatically after 30s of motor or button idling
+RTC memory support: Saves last-used motor speed across sleep cycles
+
 ### Working Functions:
 1. Variable speed control (hold up/down once wheel is turning)
 2. On/Off control of wheel
 3. Loadcell reading and setup taring (basic)
-4. Deepsleep
+4. Auto Deep Sleep: Device will enter deep sleep automatically after 30s of motor or button idling
+5. RTC memory support: Saves last-used motor speed across sleep cycles
 
 ### Planned Functions:
 - [ ] WebUI for parameter control
@@ -30,10 +43,16 @@ BOM at [this link](https://docs.google.com/spreadsheets/d/11zUR7dkBkgdKcGbynbE2z
 3. Open the NJSlowfeeder.code-workspace file
    - This should install all required dependencies
 4. Open folder in Platformio extension (if not already selected)
-5. Set build flags in src/board.h depending on what optional features you've added
-6. Choose the MCU you have in the Platformio Project Tasks section, plug MCU into computer, click upload (if MCU has already been flashed and is in deep-sleep, wake it by clicking up button before plugging in)
+5. Set build flags in src/board.h depending on what optional features you've added.
+   - Valid flags:
+      - CALIBRATION_FACTOR
+      - HAS_LOADCELL
+      - HAS_BATTERYMONITOR
+      - HAS_BUZZER
+7. Choose the MCU you have in the Platformio Project Tasks section, plug MCU into computer, click upload (if MCU has already been flashed and is in deep-sleep, wake it by clicking up button before plugging in)
+   - You will need to manually change pin definition if using SuperMini. SuperMini pin define will be added to include/board.h when time allows 
    - If this fails, hold the boot button and then click the reset button while the MCU is powered (battery or usb)
-7. Done
+8. Done
 
 ## V1.1 
 V1.1 uses a fully analog approach to slowfeeding and does not include a microcontroller.\
