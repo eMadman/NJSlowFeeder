@@ -10,8 +10,8 @@
 #include "driver/rtc_io.h"
 
 #define HAS_LOADCELL       true
-#define HAS_BATTERYMONITOR true
-#define HAS_BUZZER         true
+#define HAS_BATTERYMONITOR false
+#define HAS_BUZZER         false
 #define CALIBRATION_FACTOR 1200.0f
 
 enum ButtonStatus {
@@ -33,8 +33,8 @@ public:
 
 private:
     // GPIO Pins
-    static const int IN1MotorPin               = 44; //change to 44 if motor runs in reverse
-    static const int IN2MotorPin               = 7; //change to 7 if motor runs in reverse
+    static const int IN1MotorPin               = 7; //change to 44 if motor runs in reverse
+    static const int IN2MotorPin               = 44; //change to 7 if motor runs in reverse
     static const int buttonUpPin               = 5; //labeled as D4 on the silkscreen for xiao
     static const int buttonDownPin             = 6; //labeled as D5 on the slikscreen for xiao
     static const int HX_DOUT                   = 9; //hx711, labeled as D10 on the silkscreen for xiao
