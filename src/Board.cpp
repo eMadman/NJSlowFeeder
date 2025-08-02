@@ -10,13 +10,15 @@ Board::Board()
 	buttonDown(buttonDownPin, BUTTON_PULLDOWN, true, 50) {}
 
 void Board::setup() {
+    
     Serial.begin(115200);
+    motor.setup();
+    
     delay(1500);
-
     Serial.println("Starting up...");
     printWakeupReason();
 
-    motor.setup();
+    
     Serial.println("Setting up motor");
 
     rtcMotorVoltage = rtcMotorVoltage < 0.0f ? motor.getMinVoltage() : rtcMotorVoltage;
@@ -206,6 +208,7 @@ void Board::enterDeepSleep() {
     digitalWrite(IN2MotorPin, LOW);
     delay(10);
     pinMode(IN2MotorPin, INPUT);
+    isolateRtcPin(IN1_GPIO);
     isolateRtcPin(IN2_GPIO);
 
     // Button Down

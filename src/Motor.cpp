@@ -6,10 +6,12 @@ Motor::Motor(int pwmPin, int directionPin)
     : pwmPin(pwmPin), directionPin(directionPin) {}
 
 void Motor::setup() {
-	rtc_gpio_hold_dis((gpio_num_t)directionPin);  
+	rtc_gpio_hold_dis((gpio_num_t)directionPin);
+	rtc_gpio_hold_dis((gpio_num_t)pwmPin);  
 	pinMode(pwmPin, OUTPUT);
     pinMode(directionPin, OUTPUT);
     analogWriteFrequency(motorPWMFrequency);
+	analogWrite(pwmPin, 0);
     analogWrite(directionPin, 0);
 	reset();
 }

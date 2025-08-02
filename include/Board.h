@@ -12,7 +12,7 @@
 #define HAS_LOADCELL       true
 #define HAS_BATTERYMONITOR false
 #define HAS_BUZZER         false
-#define CALIBRATION_FACTOR 1200.0f
+#define CALIBRATION_FACTOR -2520.0f
 
 enum ButtonStatus {
     BUTTON_IDLE         = 0,
@@ -42,7 +42,8 @@ private:
     static const int batteryPin                = A2; // ADC input from voltage divider
     static const int buzzerPin                 = 4;
     static const gpio_num_t HX711CLK_GPIO      = GPIO_NUM_8;
-    static const gpio_num_t IN2_GPIO           = GPIO_NUM_7;
+    static const gpio_num_t IN1_GPIO           = GPIO_NUM_7;
+    static const gpio_num_t IN2_GPIO           = GPIO_NUM_44;
     static const gpio_num_t BUTTON_UP_GPIO     = GPIO_NUM_5;
     static const gpio_num_t BUTTON_DOWN_GPIO   = GPIO_NUM_6;
     static const gpio_num_t BATTERYPIN_GPIO    = GPIO_NUM_3;
