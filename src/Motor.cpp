@@ -10,7 +10,7 @@ void Motor::setup() {
 	rtc_gpio_hold_dis((gpio_num_t)pwmPin);  
 	pinMode(pwmPin, OUTPUT);
     pinMode(directionPin, OUTPUT);
-    analogWriteFrequency(motorPWMFrequency);
+    analogWriteFrequency(pwmPin, motorPWMFrequency);
 	analogWrite(pwmPin, 0);
     analogWrite(directionPin, 0);
 	reset();
@@ -70,9 +70,9 @@ float Motor::getVoltageStep() const {
 
 void Motor::makeSound(int frequency, int duration) {
 	// Serial.println("Making Noise");
-	analogWriteFrequency(frequency);
+	analogWriteFrequency(pwmPin, frequency);
 	setVoltage(0.3, true);
 	delay(duration);
 	setVoltage(0, true);
-	analogWriteFrequency(motorPWMFrequency);
+	analogWriteFrequency(pwmPin, motorPWMFrequency);
 }

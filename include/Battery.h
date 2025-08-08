@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include "esp_adc_cal.h"
 #include "driver/rtc_io.h"
+#include "driver/adc.h"
 #include <math.h>
 
 enum BatteryLevel {
