@@ -43,7 +43,7 @@ private:
     static const int buzzerPin                 = 4;
     static const gpio_num_t HX711CLK_GPIO      = GPIO_NUM_8;
     static const gpio_num_t IN1_GPIO           = GPIO_NUM_7;
-    static const gpio_num_t IN2_GPIO           = GPIO_NUM_44;
+    static const gpio_num_t IN2_GPIO           = GPIO_NUM_44;  //non-rtc I/O, default is OUTPUT with Pullup Resistor enabled.
     static const gpio_num_t BUTTON_UP_GPIO     = GPIO_NUM_5;
     static const gpio_num_t BUTTON_DOWN_GPIO   = GPIO_NUM_6;
     static const gpio_num_t BATTERYPIN_GPIO    = GPIO_NUM_3;
